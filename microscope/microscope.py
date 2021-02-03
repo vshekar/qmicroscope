@@ -16,7 +16,7 @@ class Microscope(QWidget):
 
         self.setMinimumWidth(300)
         self.setMinimumHeight(300)
-        self.image = QImage('/home/marcus/image.jpg')
+        self.image = QImage('image.jpg')
         self.setMinimumSize(self.image.size())
         self.center = QPoint(
             self.image.size().width() / 2, self.image.size().height() / 2
@@ -47,7 +47,7 @@ class Microscope(QWidget):
         rect = event.rect()
         painter.drawImage(rect, self.image, rect)
         painter.setPen(QColor.fromRgb(255, 0, 0))
-        painter.drawPoints(self.clicks)
+        #painter.drawPoints(self.clicks)
         rect = QRect(
             self.start.x(),
             self.start.y(),
