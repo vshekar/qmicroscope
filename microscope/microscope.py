@@ -138,8 +138,6 @@ class Microscope(QWidget):
             f'Network: {mid - tic:0.4f}\tLoad: {toc - mid:0.4f}\tTotal: {toc - tic:0.4f}'
         )
         self.update()
-        # self.imageCapture.capture()
-        # self.camera.unlock()
 
     def readSettings(self, settings):
         """ Read the settings for this microscope instance. """
