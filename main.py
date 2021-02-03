@@ -100,26 +100,50 @@ class Form(QMainWindow):
     def onRoiClicked(self, x, y):
         print(f'ROI: {x}, {y}')
 
+    def updateMicroscope(self):
+        self.microscope.url = self.url.text()
+        self.microscope.fps = self.fps.value()
+        self.microscope.xDivs = self.xDivs.value()
+        self.microscope.yDivs = self.yDivs.value()
+        self.microscope.color = self.color.isChecked()
+
+    def updateForm(self):
+        self.url.setText(self.microscope.url)
+        self.fps.setValue(self.microscope.fps)
+        self.xDivs.setValue(self.microscope.xDivs)
+        self.yDivs.setValue(self.microscope.yDivs)
+        print(f'color {self.microscope.color}')
+        self.color.setChecked(self.microscope.color)
+
     def readSettings(self, settings):
-        """ Load the form's settings. """
-        settings.beginGroup("MainWindow")
-        self.resize(settings.value("size", QSize(400, 400)))
-        self.move(settings.value("pos", QPoint(200, 200)))
+        """ Load the application's settings. """
+        settings.beginGroup('MainWindow')
+        self.resize(settings.value('size', QSize(400, 400)))
+        self.move(settings.value('pos', QPoint(200, 200)))
+        settings.beginGroup('Microscope')
+        self.microscope.readSettings(settings)
+        # Also need to restore the settings to the form elements.
+        self.updateForm()
+        settings.endGroup()
         settings.endGroup()
 
     def writeSettings(self, settings):
-        """ Save the form's settings persistently. """
+        """ Save the applications's settings persistently. """
         settings.beginGroup('MainWindow')
-        settings.setValue("size", self.size())
-        settings.setValue("pos", self.pos())
+        settings.setValue('size', self.size())
+        settings.setValue('pos', self.pos())
+        settings.beginGroup('Microscope')
+        self.updateMicroscope()
+        self.microscope.writeSettings(settings)
+        settings.endGroup()
         settings.endGroup()
 
 
 if __name__ == '__main__':
     # Set up some application basics for saving settings
-    QApplication.setOrganizationName("BNL")
-    QApplication.setOrganizationDomain("bnl.gov")
-    QApplication.setApplicationName("Microscope Demo")
+    QApplication.setOrganizationName('BNL')
+    QApplication.setOrganizationDomain('bnl.gov')
+    QApplication.setApplicationName('Microscope Demo')
 
     # Create the Qt Application
     app = QApplication(sys.argv)

@@ -138,3 +138,19 @@ class Microscope(QWidget):
         self.update()
         # self.imageCapture.capture()
         # self.camera.unlock()
+
+    def readSettings(self, settings):
+        """ Read the settings for this microscope instance. """
+        self.url = settings.value('url', 'http://localhost:9998/jpg/image.jpg')
+        self.fps = settings.value('fps', 5, type=int)
+        self.xDivs = settings.value('xDivs', 5, type=int)
+        self.yDivs = settings.value('yDivs', 5, type=int)
+        self.color = settings.value('color', False, type=bool)
+
+    def writeSettings(self, settings):
+        """ Write the settings for this microscope instance. """
+        settings.setValue('url', self.url)
+        settings.setValue('fps', self.fps)
+        settings.setValue('xDivs', self.xDivs)
+        settings.setValue('yDivs', self.yDivs)
+        settings.setValue('color', self.color)
