@@ -28,6 +28,7 @@ class Microscope(QWidget):
         self.xDivs = 5
         self.color = False
         self.fps = 5
+        self.scaleBar = False
 
         self.url = 'http://localhost:9998/jpg/image.jpg'
 
@@ -96,14 +97,15 @@ class Microscope(QWidget):
         )
 
         # Draw the scale bar
-        painter.setPen(QColor.fromRgb(40, 40, 40))
-        painter.setFont(QFont("Arial", 30))
-        scaleRect = QRect(10, 420, 200, 30)
-        painter.drawText(scaleRect, Qt.AlignCenter, "10 nm")
-        pen = painter.pen()
-        pen.setWidth(5)
-        painter.setPen(pen)
-        painter.drawLine(10, 460, 210, 460)
+        if self.scaleBar:
+            painter.setPen(QColor.fromRgb(40, 40, 40))
+            painter.setFont(QFont("Arial", 30))
+            scaleRect = QRect(10, 420, 200, 30)
+            painter.drawText(scaleRect, Qt.AlignCenter, "10 nm")
+            pen = painter.pen()
+            pen.setWidth(5)
+            painter.setPen(pen)
+            painter.drawLine(10, 460, 210, 460)
 
         toc = time.perf_counter()
         print(
