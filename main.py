@@ -1,5 +1,11 @@
 import sys
 
+from qtpy.QtCore import (
+    QPoint,
+    QSettings,
+    QSize,
+)
+
 from qtpy.QtWidgets import (
     QCheckBox,
     QLineEdit,
@@ -9,14 +15,14 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QFormLayout,
     QSpinBox,
-    QDialog,
+    QMainWindow,
     QWidget,
 )
 
 from microscope.microscope import Microscope
 
 
-class Form(QDialog):
+class Form(QMainWindow):
     def __init__(self, parent=None):
         super(Form, self).__init__(parent)
         # Create widgets
@@ -54,14 +60,27 @@ class Form(QDialog):
         hbox.addStretch()
         layout.addLayout(hbox)
         layout.addWidget(self.button)
-        # Set dialog layout
-        self.setLayout(layout)
+    
+        # Set main windows widget using our central layout
+        widget = QWidget()
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
 
         # Add button signal to slot to start/stop
         self.button.clicked.connect(self.buttonPressed)
 
         # Connect to the microscope ROI clicked signal
         self.microscope.roiClicked.connect(self.onRoiClicked)
+
+        # Read the settings and persist them
+        settings = QSettings()
+        self.readSettings(settings)
+
+    # event : QCloseEvent
+    def closeEvent(self, event):
+        settings = QSettings()
+        self.writeSettings(settings)
+        event.accept()
 
     def buttonPressed(self):
         # Currently being a little lame - only update state on start/stop.
@@ -81,12 +100,33 @@ class Form(QDialog):
     def onRoiClicked(self, x, y):
         print(f'ROI: {x}, {y}')
 
+    def readSettings(self, settings):
+        """ Load the form's settings. """
+        settings.beginGroup("MainWindow")
+        self.resize(settings.value("size", QSize(400, 400)))
+        self.move(settings.value("pos", QPoint(200, 200)))
+        settings.endGroup()
+
+    def writeSettings(self, settings):
+        """ Save the form's settings persistently. """
+        settings.beginGroup('MainWindow')
+        settings.setValue("size", self.size())
+        settings.setValue("pos", self.pos())
+        settings.endGroup()
+
+
 if __name__ == '__main__':
+    # Set up some application basics for saving settings
+    QApplication.setOrganizationName("BNL")
+    QApplication.setOrganizationDomain("bnl.gov")
+    QApplication.setApplicationName("Microscope Demo")
+
     # Create the Qt Application
     app = QApplication(sys.argv)
 
     # Create and show the form
     form = Form()
     form.show()
+
     # Run the main Qt loop
     sys.exit(app.exec_())
