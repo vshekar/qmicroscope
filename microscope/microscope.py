@@ -3,19 +3,24 @@ import requests
 import time
 import random
 
-from qtpy.QtCore import (QByteArray, QPoint, QRect, QSize, QTimer, Qt)
-from qtpy.QtGui import (QBrush, QColor, QFont, QImage, QPainter)
-from qtpy.QtWidgets import (QWidget)
+from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt
+from qtpy.QtGui import QBrush, QColor, QFont, QImage, QPainter
+from qtpy.QtWidgets import QWidget
+
 
 class Microscope(QWidget):
+    roiClicked = Signal(int, int)
+
     def __init__(self, parent=None):
         super(Microscope, self).__init__(parent)
-        
+
         self.setMinimumWidth(300)
         self.setMinimumHeight(300)
         self.image = QImage('/home/marcus/image.jpg')
         self.setMinimumSize(self.image.size())
-        self.center = QPoint(self.image.size().width() / 2, self.image.size().height() / 2)
+        self.center = QPoint(
+            self.image.size().width() / 2, self.image.size().height() / 2
+        )
         self.clicks = []
         self.start = QPoint(0, 0)
         self.end = QPoint(1, 1)
@@ -28,11 +33,11 @@ class Microscope(QWidget):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.updateImage)
-        #self.timer.start(1000. / self.fps)
-    
-    def acquire(self, start = True):
+        # self.timer.start(1000. / self.fps)
+
+    def acquire(self, start=True):
         if start:
-            self.timer.start(1000. / self.fps)
+            self.timer.start(1000.0 / self.fps)
         else:
             self.timer.stop()
 
@@ -43,8 +48,12 @@ class Microscope(QWidget):
         painter.drawImage(rect, self.image, rect)
         painter.setPen(QColor.fromRgb(255, 0, 0))
         painter.drawPoints(self.clicks)
-        rect = QRect(self.start.x(), self.start.y(),
-                     self.end.x() - self.start.x(), self.end.y() - self.start.y())
+        rect = QRect(
+            self.start.x(),
+            self.start.y(),
+            self.end.x() - self.start.x(),
+            self.end.y() - self.start.y(),
+        )
         painter.setPen(QColor.fromRgb(0, 255, 0))
         painter.drawRect(rect)
         # Now draw the lines for the boxes in the rectangle.
@@ -79,11 +88,13 @@ class Microscope(QWidget):
 
         # Draw the center mark
         painter.setPen(QColor.fromRgb(255, 0, 0))
-        painter.drawLine(self.center.x() - 20, self.center.y(),
-                         self.center.x() + 20, self.center.y())
-        painter.drawLine(self.center.x(), self.center.y() - 20,
-                         self.center.x(), self.center.y() + 20)
-        
+        painter.drawLine(
+            self.center.x() - 20, self.center.y(), self.center.x() + 20, self.center.y()
+        )
+        painter.drawLine(
+            self.center.x(), self.center.y() - 20, self.center.x(), self.center.y() + 20
+        )
+
         # Draw the scale bar
         painter.setPen(QColor.fromRgb(40, 40, 40))
         painter.setFont(QFont("Arial", 30))
@@ -95,23 +106,25 @@ class Microscope(QWidget):
         painter.drawLine(10, 460, 210, 460)
 
         toc = time.perf_counter()
-        print(f'Paint time: {toc - tic:0.4f}\tLines: {mid - lines:0.4f}\tRects: {rects2 - rects:0.4f}')
-        
+        print(
+            f'Paint time: {toc - tic:0.4f}\tLines: {mid - lines:0.4f}\tRects: {rects2 - rects:0.4f}'
+        )
 
     def mousePressEvent(self, event):
         pos = event.pos()
+        self.roiClicked.emit(pos.x(), pos.y())
         self.clicks.append(pos)
         self.start = pos
         self.end = pos
         self.update()
-        
+
     def mouseMoveEvent(self, event):
         self.end = event.pos()
         self.update()
-    
+
     def sizeHint(self):
         return QSize(400, 400)
-    
+
     def updateImage(self):
         """ Do our magic """
         tic = time.perf_counter()
@@ -119,7 +132,9 @@ class Microscope(QWidget):
         mid = time.perf_counter()
         self.image.loadFromData(QByteArray(r.content), 'JPG')
         toc = time.perf_counter()
-        print(f'Network: {mid - tic:0.4f}\tLoad: {toc - mid:0.4f}\tTotal: {toc - tic:0.4f}')
+        print(
+            f'Network: {mid - tic:0.4f}\tLoad: {toc - mid:0.4f}\tTotal: {toc - tic:0.4f}'
+        )
         self.update()
-        #self.imageCapture.capture()
-        #self.camera.unlock()
+        # self.imageCapture.capture()
+        # self.camera.unlock()

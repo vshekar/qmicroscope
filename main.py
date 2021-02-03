@@ -1,12 +1,22 @@
 import sys
 
-from qtpy.QtWidgets import (QCheckBox, QLineEdit, QPushButton, QApplication,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QSpinBox, QDialog, QWidget)
+from qtpy.QtWidgets import (
+    QCheckBox,
+    QLineEdit,
+    QPushButton,
+    QApplication,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QSpinBox,
+    QDialog,
+    QWidget,
+)
 
 from microscope.microscope import Microscope
 
-class Form(QDialog):
 
+class Form(QDialog):
     def __init__(self, parent=None):
         super(Form, self).__init__(parent)
         # Create widgets
@@ -49,7 +59,10 @@ class Form(QDialog):
 
         # Add button signal to slot to start/stop
         self.button.clicked.connect(self.buttonPressed)
-    
+
+        # Connect to the microscope ROI clicked signal
+        self.microscope.roiClicked.connect(self.onRoiClicked)
+
     def buttonPressed(self):
         # Currently being a little lame - only update state on start/stop.
         print('Button pressed!', self.button.text())
@@ -65,11 +78,13 @@ class Form(QDialog):
             self.microscope.acquire(False)
             self.button.setText('Start')
 
+    def onRoiClicked(self, x, y):
+        print(f'ROI: {x}, {y}')
+
 if __name__ == '__main__':
     # Create the Qt Application
     app = QApplication(sys.argv)
-    
-    
+
     # Create and show the form
     form = Form()
     form.show()
