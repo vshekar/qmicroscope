@@ -127,7 +127,7 @@ class Form(QMainWindow):
     def buttonPressed(self, index):
         # Currently being a little lame - only update state on start/stop.
         if self.buttons[index].text() == f'Start {self.names[index]}':
-            self.updateMicroscopeIndex(index)
+            self.updateMicroscope()
             self.microscopes[index].acquire(True)
             self.buttons[index].setText(f'Stop {self.names[index]}')
         else:
@@ -143,14 +143,6 @@ class Form(QMainWindow):
         self.microscope.xDivs = self.xDivs.value()
         self.microscope.yDivs = self.yDivs.value()
         self.microscope.color = self.color.isChecked()
-    
-    def updateMicroscopeIndex(self, index):
-        microscope = self.microscopes[index]
-        microscope.url = self.url.text()
-        microscope.fps = self.fps.value()
-        microscope.xDivs = self.xDivs.value()
-        microscope.yDivs = self.yDivs.value()
-        microscope.color = self.color.isChecked()
 
     def updateForm(self):
         self.url.setText(self.microscope.url)
