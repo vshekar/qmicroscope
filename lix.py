@@ -177,6 +177,7 @@ class Form(QMainWindow):
         self.updateMicroscope()
         settings.beginGroup('Microscope0')
         self.microscopes[0].writeSettings(settings)
+        print(f'Microscope0: {self.microscopes[0].writeToDict()}')
         settings.endGroup()
         settings.beginGroup('Microscope1')
         self.microscopes[1].writeSettings(settings)

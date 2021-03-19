@@ -80,7 +80,14 @@ class Microscope(QWidget):
             painter.setPen(QColor.fromRgb(0, 255, 0))
             for i in range(0, self.xDivs):
                 for j in range(0, self.yDivs):
-                    brushColor.setAlpha(random.randint(0, 255))
+                    alpha = i / self.yDivs * 255
+                    if True:# j % 2 == 0:
+                        brushColor.setAlpha(alpha / 2)
+                        brushColor.setGreen(255)
+                    else:
+                        brushColor.setAlpha(255 / 2)
+                        brushColor.setGreen(alpha)
+
                     brush.setColor(brushColor)
                     painter.setBrush(brush)
                     rect = QRect(x1 + i * inc_x, y1 + j * inc_y, inc_x, inc_y)
@@ -138,6 +145,30 @@ class Microscope(QWidget):
             f'Network: {mid - tic:0.4f}\tLoad: {toc - mid:0.4f}\tTotal: {toc - tic:0.4f}'
         )
         self.update()
+
+    def readFromDict(self, settings):
+        """ Read the settings from a Python dict. """
+        if settings.has_key('url'):
+            self.url = settings['url']
+        if settings.has_key('fps'):
+            self.fps = settings['fps']
+        if settings.has_key('xDivs'):
+            self.xDivs = settings['xDivs']
+        if settings.has_key('yDivs'):
+            self.yDivs = settings['yDivs']
+        if settings.has_key('color'):
+            self.color = settings['color']
+
+    def writeToDict(self):
+        """ Write the widget's settings to a Python dict. """
+        settings = {
+            'url': self.url,
+            'fps': self.fps,
+            'xDivs': self.xDivs,
+            'yDivs': self.yDivs,
+            'color': self.color
+        }
+        return settings
 
     def readSettings(self, settings):
         """ Read the settings for this microscope instance. """
