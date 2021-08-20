@@ -1,11 +1,40 @@
-import requests
-
 import time
 import random
 
-from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt
+from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt, QObject, QUrl
 from qtpy.QtGui import QBrush, QColor, QFont, QImage, QPainter
 from qtpy.QtWidgets import QWidget
+
+from qtpy.QtNetwork import QNetworkRequest, QNetworkAccessManager
+
+class Downloader(QObject):
+    imageReady = Signal(QByteArray)
+
+    def __init__(self, parent=None):
+        super(Downloader, self).__init__(parent)
+        self.manager = QNetworkAccessManager()
+        self.url = 'http://localhost:9998/jpg/image.jpg'
+        self.request = QNetworkRequest()
+        self.request.setUrl(QUrl(self.url))
+        self.buffer = QByteArray()
+        self.reply = None
+
+    def setUrl(self, url):
+        self.url = url
+        self.request.setUrl(QUrl(self.url))
+
+    def downloadData(self):
+        """ Only request a new image if this is the first/last completed. """
+        if self.reply is None:
+            self.reply = self.manager.get(self.request)
+            self.reply.finished.connect(self.finished)
+
+    def finished(self):
+        """ Read the buffer, emit a signal with the new image in it. """
+        self.buffer = self.reply.readAll()
+        self.imageReady.emit(self.buffer)
+        self.reply.deleteLater()
+        self.reply = None
 
 
 class Microscope(QWidget):
@@ -17,11 +46,10 @@ class Microscope(QWidget):
         self.setMinimumWidth(300)
         self.setMinimumHeight(300)
         self.image = QImage('image.jpg')
-        self.setMinimumSize(self.image.size())
+        self.clicks = []
         self.center = QPoint(
             self.image.size().width() / 2, self.image.size().height() / 2
         )
-        self.clicks = []
         self.start = QPoint(0, 0)
         self.end = QPoint(1, 1)
         self.yDivs = 5
@@ -34,9 +62,20 @@ class Microscope(QWidget):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.updateImage)
-        # self.timer.start(1000. / self.fps)
+
+        self.downloader = Downloader(self)
+        self.downloader.imageReady.connect(self.updateImageData)
+
+    def updatedImageSize(self):
+        if self.image.size() != self.sizeHint():
+            self.setMinimumSize(self.image.size())
+            self.center = QPoint(
+                self.image.size().width() / 2, self.image.size().height() / 2
+            )
+        print('No update needed for the image size')
 
     def acquire(self, start=True):
+        self.downloader.setUrl(self.url)
         if start:
             self.timer.start(1000.0 / self.fps)
         else:
@@ -135,15 +174,13 @@ class Microscope(QWidget):
         return QSize(400, 400)
 
     def updateImage(self):
-        """ Do our magic """
-        tic = time.perf_counter()
-        r = requests.get(self.url, timeout=1)
-        mid = time.perf_counter()
-        self.image.loadFromData(QByteArray(r.content), 'JPG')
-        toc = time.perf_counter()
-        print(
-            f'Network: {mid - tic:0.4f}\tLoad: {toc - mid:0.4f}\tTotal: {toc - tic:0.4f}'
-        )
+        """ Request an updated image asynchronously. """
+        self.downloader.downloadData()
+
+    def updateImageData(self, image):
+        """ Triggered when the new image is ready, update the view. """
+        self.image.loadFromData(image, 'JPG')
+        self.updatedImageSize()
         self.update()
 
     def readFromDict(self, settings):
