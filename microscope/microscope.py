@@ -67,12 +67,11 @@ class Microscope(QWidget):
         self.downloader.imageReady.connect(self.updateImageData)
 
     def updatedImageSize(self):
-        if self.image.size() != self.sizeHint():
+        if self.image.size() != self.minimumSize():
             self.setMinimumSize(self.image.size())
             self.center = QPoint(
                 self.image.size().width() / 2, self.image.size().height() / 2
             )
-        print('No update needed for the image size')
 
     def acquire(self, start=True):
         self.downloader.setUrl(self.url)
