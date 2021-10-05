@@ -57,6 +57,8 @@ class Microscope(QWidget):
         self.color = False
         self.fps = 5
         self.scaleBar = False
+        self.crop = []
+        self.scale = []
 
         self.url = 'http://localhost:9998/jpg/image.jpg'
 
@@ -179,8 +181,19 @@ class Microscope(QWidget):
     def updateImageData(self, image):
         """ Triggered when the new image is ready, update the view. """
         self.image.loadFromData(image, 'JPG')
+        if len(self.crop) == 4:
+            self.image = self.image.copy(self.crop[0], self.crop[1], self.crop[2], self.crop[3])
+        if len(self.scale) == 2:
+            self.image = self.image.scaled(self.scale[0], self.scale[1])
+
         self.updatedImageSize()
         self.update()
+
+    def resizeImage(self):
+        if len(self.crop) == 4:
+            self.image = self.image.copy(self.crop[0], self.crop[1], self.crop[2], self.crop[3])
+        if len(self.scale) == 2:
+            self.image = self.image.scaled(self.scale[0], self.scale[1])
 
     def readFromDict(self, settings):
         """ Read the settings from a Python dict. """
