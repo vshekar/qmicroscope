@@ -20,14 +20,19 @@ from qtpy.QtWidgets import (
 )
 
 from microscope.microscope import Microscope
-
+from microscope.container import Container
+from microscope.settings import Settings
 
 class Form(QMainWindow):
     def __init__(self, parent=None):
         super(Form, self).__init__(parent)
         # Create widgets
         self.setWindowTitle("NSLS-II Microscope Widget")
-        self.microscope = Microscope(self)
+        self.container = Container(self)
+        self.container.count = 3
+        self.container.size = [2, 2]
+        self.microscope = self.container.microscope(0)
+        #self.microscope = Microscope(self)
 
         # Create a form with some controls
         self.fps = QSpinBox()
@@ -42,7 +47,8 @@ class Form(QMainWindow):
         self.color = QCheckBox()
 
         self.url = QLineEdit('http://localhost:9998/jpg/image.jpg')
-        self.button = QPushButton('Start')
+        self.startButton = QPushButton('Start')
+        self.settingsButton = QPushButton('Settings')
 
         # Lay it out
         formLayout = QFormLayout()
@@ -54,12 +60,18 @@ class Form(QMainWindow):
 
         # Create layout and add widgets
         layout = QVBoxLayout()
-        layout.addWidget(self.microscope)
+        layout.addWidget(self.container)
         hbox = QHBoxLayout()
         hbox.addLayout(formLayout)
         hbox.addStretch()
         layout.addLayout(hbox)
-        layout.addWidget(self.button)
+        hButtonBox = QHBoxLayout()
+        hButtonBox.addStretch()
+        hButtonBox.addWidget(self.startButton)
+        hButtonBox.addWidget(self.settingsButton)
+        hButtonBox.addStretch()
+        layout.addLayout(hButtonBox)
+
     
         # Set main windows widget using our central layout
         widget = QWidget()
@@ -67,7 +79,8 @@ class Form(QMainWindow):
         self.setCentralWidget(widget)
 
         # Add button signal to slot to start/stop
-        self.button.clicked.connect(self.buttonPressed)
+        self.startButton.clicked.connect(self.startButtonPressed)
+        self.settingsButton.clicked.connect(self.settingsButtonClicked)
 
         # Connect to the microscope ROI clicked signal
         self.microscope.roiClicked.connect(self.onRoiClicked)
@@ -76,13 +89,15 @@ class Form(QMainWindow):
         settings = QSettings()
         self.readSettings(settings)
 
+        self.settingDialog = Settings(self)
+
     # event : QCloseEvent
     def closeEvent(self, event):
         settings = QSettings()
         self.writeSettings(settings)
         event.accept()
 
-    def buttonPressed(self):
+    def startButtonPressed(self):
         # Currently being a little lame - only update state on start/stop.
         print('Button pressed!', self.button.text())
         if self.button.text() == 'Start':
@@ -96,6 +111,10 @@ class Form(QMainWindow):
         else:
             self.microscope.acquire(False)
             self.button.setText('Start')
+
+    def settingsButtonClicked(self):
+        # Open the settings dialog.
+        self.settingDialog.show()
 
     def onRoiClicked(self, x, y):
         print(f'ROI: {x}, {y}')
