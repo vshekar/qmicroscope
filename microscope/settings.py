@@ -85,6 +85,7 @@ class Settings(QDialog):
 
     def setMicroscope(self, microscope):
         self.microscope = microscope
+        self.updateForm()
 
     def setContainer(self, container):
         # Store a reference to the container, default to widget 0.
