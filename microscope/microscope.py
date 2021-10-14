@@ -184,7 +184,10 @@ class Microscope(QWidget):
         if len(self.crop) == 4:
             self.image = self.image.copy(self.crop[0], self.crop[1], self.crop[2], self.crop[3])
         if len(self.scale) == 2:
-            self.image = self.image.scaled(self.scale[0], self.scale[1])
+            if self.scale[0] > 0:
+                self.image = self.image.scaledToWidth(self.scale[0])
+            elif self.scale[1] > 0:
+                self.image = self.image.scaledToHeight(self.scale[1])
 
         self.updatedImageSize()
         self.update()
@@ -222,6 +225,7 @@ class Microscope(QWidget):
     def readSettings(self, settings):
         """ Read the settings for this microscope instance. """
         self.url = settings.value('url', 'http://localhost:9998/jpg/image.jpg')
+        print(f'url: {self.url}')
         self.fps = settings.value('fps', 5, type=int)
         self.xDivs = settings.value('xDivs', 5, type=int)
         self.yDivs = settings.value('yDivs', 5, type=int)
