@@ -45,7 +45,9 @@ class Settings(QDialog):
         self.microscope = None
 
         self.url = QLineEdit('http://localhost:9998/jpg/image.jpg')
-        self.button = QPushButton('Start')
+        self.okButton = QPushButton('OK')
+        self.applyButton = QPushButton('Apply')
+        self.cancelButton = QPushButton('Cancel')
 
         # Lay it out
         formLayout = QFormLayout()
@@ -63,11 +65,18 @@ class Settings(QDialog):
         # Create layout and add widgets
         layout = QVBoxLayout()
         hbox = QHBoxLayout()
-        hbox.addLayout(formLayout)
         hbox.addStretch()
+        hbox.addWidget(self.okButton)
+        hbox.addWidget(self.applyButton)
+        hbox.addWidget(self.cancelButton)
+        hbox.addStretch()
+        layout.addLayout(formLayout)
         layout.addLayout(hbox)
-        layout.addWidget(self.button)
         self.setLayout(layout)
+
+        self.okButton.clicked.connect(self.okClicked)
+        self.applyButton.clicked.connect(self.applyClicked)
+        self.cancelButton.clicked.connect(self.cancelClicked)
 
         # Connect up some signals and slots...
         self.selector.currentIndexChanged.connect(self.selectionChanged)
@@ -82,9 +91,19 @@ class Settings(QDialog):
         self.container = container
         self.setMicroscope(container.microscope(0))
         self.updateCameraSelect()
+
+    def okClicked(self):
+        self.updateMicroscope()
+        self.accept()
+    
+    def applyClicked(self):
+        self.updateMicroscope()
+    
+    def cancelClicked(self):
+        self.reject()
     
     def updateCameraSelect(self):
-        # Iterate over the microscopes.
+        # Iterate over the microscopes and create entries in the select.
         self.selector.clear()
         for i in range(self.container.count):
             print(f'doing element {i}')
@@ -119,6 +138,7 @@ class Settings(QDialog):
         self.microscope.xDivs = self.xDivs.value()
         self.microscope.yDivs = self.yDivs.value()
         self.microscope.color = self.color.isChecked()
+        self.microscope.update()
 
     def updateForm(self):
         self.url.setText(self.microscope.url)
