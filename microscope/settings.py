@@ -153,6 +153,7 @@ class Settings(QDialog):
         self.xDivs.setValue(self.microscope.xDivs)
         self.yDivs.setValue(self.microscope.yDivs)
         self.color.setChecked(self.microscope.color)
-        self.scale.setValue(self.microscope.scale[0])
+        if len(self.microscope.scale) > 0:
+            self.scale.setValue(self.microscope.scale[0])
 
 
