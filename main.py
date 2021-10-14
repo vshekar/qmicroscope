@@ -34,37 +34,12 @@ class Form(QMainWindow):
         self.microscope = self.container.microscope(0)
         #self.microscope = Microscope(self)
 
-        # Create a form with some controls
-        self.fps = QSpinBox()
-        self.fps.setRange(1, 30)
-        self.fps.setValue(5)
-        self.xDivs = QSpinBox()
-        self.xDivs.setRange(1, 50)
-        self.xDivs.setValue(5)
-        self.yDivs = QSpinBox()
-        self.yDivs.setRange(1, 50)
-        self.yDivs.setValue(5)
-        self.color = QCheckBox()
-
-        self.url = QLineEdit('http://localhost:9998/jpg/image.jpg')
         self.startButton = QPushButton('Start')
         self.settingsButton = QPushButton('Settings')
-
-        # Lay it out
-        formLayout = QFormLayout()
-        formLayout.addRow('Camera URL:', self.url)
-        formLayout.addRow('Frame Rate:', self.fps)
-        formLayout.addRow('X Divisions:', self.xDivs)
-        formLayout.addRow('Y Divisions:', self.yDivs)
-        formLayout.addRow('Color boxes:', self.color)
 
         # Create layout and add widgets
         layout = QVBoxLayout()
         layout.addWidget(self.container)
-        hbox = QHBoxLayout()
-        hbox.addLayout(formLayout)
-        hbox.addStretch()
-        layout.addLayout(hbox)
         hButtonBox = QHBoxLayout()
         hButtonBox.addStretch()
         hButtonBox.addWidget(self.startButton)
@@ -72,7 +47,6 @@ class Form(QMainWindow):
         hButtonBox.addStretch()
         layout.addLayout(hButtonBox)
 
-    
         # Set main windows widget using our central layout
         widget = QWidget()
         widget.setLayout(layout)
@@ -89,7 +63,8 @@ class Form(QMainWindow):
         settings = QSettings()
         self.readSettings(settings)
 
-        self.settingDialog = Settings(self)
+        self.settingsDialog = Settings(self)
+        self.settingsDialog.setContainer(self.container)
 
     # event : QCloseEvent
     def closeEvent(self, event):
@@ -99,51 +74,27 @@ class Form(QMainWindow):
 
     def startButtonPressed(self):
         # Currently being a little lame - only update state on start/stop.
-        print('Button pressed!', self.button.text())
-        if self.button.text() == 'Start':
-            self.microscope.url = self.url.text()
-            self.microscope.fps = self.fps.value()
-            self.microscope.xDivs = self.xDivs.value()
-            self.microscope.yDivs = self.yDivs.value()
-            self.microscope.color = self.color.isChecked()
-            self.microscope.acquire(True)
-            self.button.setText('Stop')
+        print('Button pressed!', self.startButton.text())
+        if self.startButton.text() == 'Start':
+            self.container.start(True)
+            self.startButton.setText('Stop')
         else:
-            self.microscope.acquire(False)
-            self.button.setText('Start')
+            self.container.start(False)
+            self.startButton.setText('Start')
 
     def settingsButtonClicked(self):
         # Open the settings dialog.
-        self.settingDialog.show()
+        self.settingsDialog.show()
 
     def onRoiClicked(self, x, y):
         print(f'ROI: {x}, {y}')
-
-    def updateMicroscope(self):
-        self.microscope.url = self.url.text()
-        self.microscope.fps = self.fps.value()
-        self.microscope.xDivs = self.xDivs.value()
-        self.microscope.yDivs = self.yDivs.value()
-        self.microscope.color = self.color.isChecked()
-
-    def updateForm(self):
-        self.url.setText(self.microscope.url)
-        self.fps.setValue(self.microscope.fps)
-        self.xDivs.setValue(self.microscope.xDivs)
-        self.yDivs.setValue(self.microscope.yDivs)
-        print(f'color {self.microscope.color}')
-        self.color.setChecked(self.microscope.color)
 
     def readSettings(self, settings):
         """ Load the application's settings. """
         settings.beginGroup('MainWindow')
         self.resize(settings.value('size', QSize(400, 400)))
         self.move(settings.value('pos', QPoint(200, 200)))
-        settings.beginGroup('Microscope')
-        self.microscope.readSettings(settings)
-        # Also need to restore the settings to the form elements.
-        self.updateForm()
-        settings.endGroup()
+        self.container.readSettings(settings)
         settings.endGroup()
 
     def writeSettings(self, settings):
@@ -151,10 +102,7 @@ class Form(QMainWindow):
         settings.beginGroup('MainWindow')
         settings.setValue('size', self.size())
         settings.setValue('pos', self.pos())
-        settings.beginGroup('Microscope')
-        self.updateMicroscope()
-        self.microscope.writeSettings(settings)
-        settings.endGroup()
+        self.container.writeSettings(settings)
         settings.endGroup()
 
 
@@ -162,7 +110,7 @@ if __name__ == '__main__':
     # Set up some application basics for saving settings
     QApplication.setOrganizationName('BNL')
     QApplication.setOrganizationDomain('bnl.gov')
-    QApplication.setApplicationName('Microscope Demo')
+    QApplication.setApplicationName('QCamera')
 
     # Create the Qt Application
     app = QApplication(sys.argv)

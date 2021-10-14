@@ -54,6 +54,7 @@ class Container(QWidget):
         if self._size != new_size:
             self._update = True
             self._size = new_size
+            self._count = new_size[0] * new_size[1]
 
     @property
     def horizontal(self):
@@ -74,17 +75,25 @@ class Container(QWidget):
         if self._horizontal == new_value:
             self._update = True
             self._horizontal = not new_value
-    
+
+    def start(self, acq):
+        """Start all of the camera widgets."""
+        for m in self._widgets:
+            m.acquire(acq)
+
+    def updateWidgets(self):
+        """Instantiate/show objects."""
+        if len(self._widgets) > self._count:
+            self._widgets = self._widgets[:self._count]
+        while(len(self._widgets) < self._count):
+            self._widgets.append(Microscope(self))
 
     def paintEvent(self, event):
         print('I am getting painted...')
         if self._update:
             print('updating')
             # We need to update the number of widgets, get the layout right.
-            if len(self._widgets) > self._count:
-                self._widgets = self._widgets[:self._count]
-            while(len(self._widgets) < self._count):
-                self._widgets.append(Microscope(self))
+            self.updateWidgets()
             # Now update the layout of the widget!
             _cur = 0
             self._grid = QGridLayout()
@@ -94,9 +103,40 @@ class Container(QWidget):
             for i in range(self._size[0]):
                 for j in range(self._size[1]):
                     if _cur < len(self._widgets):
-                        self._grid.addWidget(self._widgets[_cur], i, j)
+                        self._grid.addWidget(self._widgets[_cur], j, i)
                     _cur = _cur + 1
             print(self._grid.rowCount())
 
             QWidget().setLayout(self.layout())
             self.setLayout(self._grid)
+            self._update = False
+
+    def readSettings(self, settings):
+        """ Load the application's settings. """
+        settings.beginGroup('Container')
+        sz = [ 1, 1 ]
+        sz[0] = settings.value('cols', 1, type=int)
+        sz[1] = settings.value('rows', 1, type=int)
+        self.size = sz
+        # Ensure the widgets are created, then load their settings.
+        self.updateWidgets()
+        for i in range(len(self._widgets)):
+            settings.beginGroup(f'Camera{i}')
+            self._widgets[i].readSettings(settings)
+            settings.endGroup()
+
+        settings.endGroup()
+
+    def writeSettings(self, settings):
+        """ Save the applications's settings persistently. """
+        settings.beginGroup('Container')
+        settings.setValue('cols', self._size[0])
+        settings.setValue('rows', self._size[1])
+        #self.updateMicroscope()
+        # Write out all the settings for the widgets.
+        for i in range(len(self._widgets)):
+            settings.beginGroup(f'Camera{i}')
+            self._widgets[i].writeSettings(settings)
+            settings.endGroup()
+
+        settings.endGroup()
