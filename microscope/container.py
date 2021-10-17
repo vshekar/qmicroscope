@@ -89,7 +89,6 @@ class Container(QWidget):
             self._widgets.append(Microscope(self))
 
     def paintEvent(self, event):
-        print('I am getting painted...')
         if self._update:
             print('updating')
             # We need to update the number of widgets, get the layout right.
