@@ -50,6 +50,7 @@ class Microscope(QWidget):
         self.center = QPoint(
             self.image.size().width() / 2, self.image.size().height() / 2
         )
+        self.drawBoxes = False
         self.start = QPoint(0, 0)
         self.end = QPoint(1, 1)
         self.yDivs = 5
@@ -82,13 +83,7 @@ class Microscope(QWidget):
         else:
             self.timer.stop()
 
-    def paintEvent(self, event):
-        tic = time.perf_counter()
-        painter = QPainter(self)
-        rect = event.rect()
-        painter.drawImage(rect, self.image, rect)
-        painter.setPen(QColor.fromRgb(255, 0, 0))
-        #painter.drawPoints(self.clicks)
+    def paintBoxes(self, painter):
         rect = QRect(
             self.start.x(),
             self.start.y(),
@@ -134,6 +129,16 @@ class Microscope(QWidget):
                     painter.drawRect(rect)
         rects2 = time.perf_counter()
 
+
+    def paintEvent(self, event):
+        tic = time.perf_counter()
+        painter = QPainter(self)
+        rect = event.rect()
+        painter.drawImage(rect, self.image, rect)
+        painter.setPen(QColor.fromRgb(255, 0, 0))
+        #painter.drawPoints(self.clicks)
+        if self.drawBoxes:
+            self.drawBoxes(painter)
         # Draw the center mark
         painter.setPen(QColor.fromRgb(255, 0, 0))
         painter.drawLine(
@@ -155,9 +160,6 @@ class Microscope(QWidget):
             painter.drawLine(10, 460, 210, 460)
 
         toc = time.perf_counter()
-        print(
-            f'Paint time: {toc - tic:0.4f}\tLines: {mid - lines:0.4f}\tRects: {rects2 - rects:0.4f}'
-        )
 
     def mousePressEvent(self, event):
         pos = event.pos()
