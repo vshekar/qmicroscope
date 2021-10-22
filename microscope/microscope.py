@@ -198,7 +198,10 @@ class Microscope(QWidget):
         if len(self.crop) == 4:
             self.image = self.image.copy(self.crop[0], self.crop[1], self.crop[2], self.crop[3])
         if len(self.scale) == 2:
-            self.image = self.image.scaled(self.scale[0], self.scale[1])
+            if self.scale[0] > 0:
+                self.image = self.image.scaledToWidth(self.scale[0])
+            elif self.scale[1] > 0:
+                self.image = self.image.scaledToHeight(self.scale[1])
 
     def readFromDict(self, settings):
         """ Read the settings from a Python dict. """
@@ -212,6 +215,14 @@ class Microscope(QWidget):
             self.yDivs = settings['yDivs']
         if settings.has_key('color'):
             self.color = settings['color']
+        if settings.has_key('scaleW'):
+            self.scale = [ settings['scaleW'], 0 ]
+        if settings.has_key('scaleH'):
+            if len(self.scale) == 2:
+                self.scale[1] = settings['scaleW']
+            else:
+                self.scale = [ 0, settings['scaleW'] ]
+
 
     def writeToDict(self):
         """ Write the widget's settings to a Python dict. """
@@ -222,6 +233,9 @@ class Microscope(QWidget):
             'yDivs': self.yDivs,
             'color': self.color
         }
+        if len(self.scale) == 2:
+            settings['scaleW'] = self.scale[0]
+            settings['scaleH'] = self.scale[1]
         return settings
 
     def readSettings(self, settings):
@@ -232,6 +246,12 @@ class Microscope(QWidget):
         self.xDivs = settings.value('xDivs', 5, type=int)
         self.yDivs = settings.value('yDivs', 5, type=int)
         self.color = settings.value('color', False, type=bool)
+        if settings.value('scaleW', -1, type=int) >= 0:
+            self.scale = [ settings.value('scaleW', 0, type=int),
+                           settings.value('scaleH', 0, type=int) ]
+            self.resizeImage()
+
+
 
     def writeSettings(self, settings):
         """ Write the settings for this microscope instance. """
@@ -240,3 +260,6 @@ class Microscope(QWidget):
         settings.setValue('xDivs', self.xDivs)
         settings.setValue('yDivs', self.yDivs)
         settings.setValue('color', self.color)
+        if len(self.scale) == 2:
+            settings.setValue('scaleW', self.scale[0])
+            settings.setValue('scaleH', self.scale[1])
