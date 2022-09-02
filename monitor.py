@@ -1,9 +1,11 @@
 import sys
 
+
 from qtpy.QtCore import (
     QPoint,
     QSettings,
     QSize,
+    Qt
 )
 
 from qtpy.QtWidgets import (
@@ -17,8 +19,8 @@ from qtpy.QtWidgets import (
     QSpinBox,
     QMainWindow,
     QWidget,
+    QSplitter
 )
-
 from microscope.microscope import Microscope
 from microscope.container import Container
 from microscope.settings import Settings
@@ -33,19 +35,32 @@ class Form(QMainWindow):
         self.container.size = [2, 2]
         self.microscope = self.container.microscope(0)
         #self.microscope = Microscope(self)
+        self.main_microscope = Microscope(self, viewport=False)
+        self.main_microscope.scale = [0, 500]
 
         self.startButton = QPushButton('Start')
         self.settingsButton = QPushButton('Settings')
 
         # Create layout and add widgets
         layout = QVBoxLayout()
-        layout.addWidget(self.container)
+
+        #splitter1 = QSplitter(Qt.Vertical)
+        #splitter1.addWidget(self.main_microscope)
+        #splitter1.addWidget(self.container)
+
+        #layout.addWidget(splitter1)
+        layout.addStretch()
+        layout.addWidget(self.main_microscope, 80)
+        layout.addWidget(self.container, 20)
+        layout.addStretch()
+        
         hButtonBox = QHBoxLayout()
         hButtonBox.addStretch()
         hButtonBox.addWidget(self.startButton)
         hButtonBox.addWidget(self.settingsButton)
         hButtonBox.addStretch()
         layout.addLayout(hButtonBox)
+        layout.setAlignment(Qt.AlignCenter)
 
         # Set main windows widget using our central layout
         widget = QWidget()
@@ -67,6 +82,10 @@ class Form(QMainWindow):
         self.settingsDialog = Settings(self)
         self.settingsDialog.setContainer(self.container)
 
+    def set_main_microscope_url(self, url):
+        self.main_microscope.url = url
+        self.main_microscope.acquire(True)
+
     # event : QCloseEvent
     def closeEvent(self, event):
         settings = QSettings()
@@ -81,6 +100,7 @@ class Form(QMainWindow):
             self.startButton.setText('Stop')
         else:
             self.container.start(False)
+            # self.main_microscope.acquire(False)
             self.startButton.setText('Start')
 
     def settingsButtonClicked(self):
