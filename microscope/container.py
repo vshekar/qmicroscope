@@ -16,9 +16,13 @@ class Container(QWidget):
         self._horizontal: bool = True # When setting the count prefer horizontal
 
         self._widgets: "List[Microscope]" = []
-        microscope_widget = Microscope(self)
+        
         if hasattr(self.parent_widget, 'set_main_microscope_url'):
+            microscope_widget = Microscope(self)
             microscope_widget.clicked_url.connect(self.parent_widget.set_main_microscope_url)
+        else:
+            microscope_widget = Microscope(self, viewport=False)
+
         self._widgets.append(microscope_widget)
 
         self._grid = QGridLayout()

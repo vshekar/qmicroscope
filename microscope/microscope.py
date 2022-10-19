@@ -3,12 +3,13 @@ from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt, QO
 from qtpy.QtGui import QBrush, QColor, QFont, QImage, QPainter, QPalette, QContextMenuEvent, QMouseEvent, QPaintEvent
 from qtpy.QtWidgets import QWidget, QRubberBand, QSizeGrip, QHBoxLayout, QMenu, QAction, QColorDialog
 
+from qtpy.QtNetwork import QNetworkReply, QNetworkRequest, QNetworkAccessManager
+from typing import List, Any, Dict, Optional, NamedTuple
+from cv2 import VideoCapture
 
-from qtpy.QtNetwork import QNetworkRequest, QNetworkAccessManager
-from typing import List, Any, Dict
 
 class Downloader(QObject):
-    imageReady = Signal(QByteArray)
+    imageReady = Signal(object)
 
     def __init__(self, parent:"QObject|None"=None) -> None:
         super(Downloader, self).__init__(parent)
@@ -17,24 +18,40 @@ class Downloader(QObject):
         self.request = QNetworkRequest()
         self.request.setUrl(QUrl(self.url))
         self.buffer = QByteArray()
-        self.reply = None
+        self.reply: Optional[QNetworkReply] = None
+        self.isMjpegFeed = False
 
     def setUrl(self, url: str) -> None:
         self.url = url
         self.request.setUrl(QUrl(self.url))
+        if self.url.lower().endswith('mjpg'):
+            self.isMjpegFeed = True
+            self.mjpegCamera = VideoCapture(self.url)
+        else:
+            self.isMjpegFeed = False
+            self.mjpegCamera = None
+
 
     def downloadData(self) -> None:
         """ Only request a new image if this is the first/last completed. """
-        if self.reply is None:
+        if self.reply is None and not self.isMjpegFeed:
             self.reply = self.manager.get(self.request)
             self.reply.finished.connect(self.finished)
+        elif self.isMjpegFeed:
+            retVal, currentFrame = self.mjpegCamera.read()
+            if currentFrame is not None:
+                height, width = currentFrame.shape[:2]
+                image = QImage(currentFrame, width, height, 3*width, QImage.Format_RGB888)
+                self.imageReady.emit(image.rgbSwapped())
 
     def finished(self) -> None:
         """ Read the buffer, emit a signal with the new image in it. """
-        self.buffer = self.reply.readAll()
-        self.imageReady.emit(self.buffer)
-        self.reply.deleteLater()
-        self.reply = None
+        if self.reply:
+            self.buffer = self.reply.readAll()
+            self.imageReady.emit(self.buffer)
+            self.reply.deleteLater()
+            self.reply = None
+
 
 class ResizableRubberBand(QWidget):
     box_modified = Signal(QPoint, QPoint)
@@ -56,13 +73,6 @@ class ResizableRubberBand(QWidget):
         layout.addWidget(
             QSizeGrip(self), 0,
             Qt.AlignRight | Qt.AlignBottom)
-        layout.addWidget(
-            QSizeGrip(self), 0,
-            Qt.AlignRight | Qt.AlignTop)
-        layout.addWidget(
-            QSizeGrip(self), 0,
-            Qt.AlignLeft | Qt.AlignBottom)
-
         self._band = QRubberBand(
             QRubberBand.Rectangle, self)
         self._band.setMaximumSize(QSize(self.parent().geometry().width(), 
@@ -81,7 +91,6 @@ class ResizableRubberBand(QWidget):
 
     def paintEvent(self, a0):
         # Get current window size
-        window_size = self.size()
         qp = QPainter()
         qp.begin(self)
         self.update()
@@ -129,7 +138,7 @@ class Microscope(QWidget):
     roiClicked: Signal = Signal(int, int)
     clicked_url: Signal = Signal(str)
     
-    def __init__(self, parent:"QWidget|None"=None, viewport:bool=True) -> None:
+    def __init__(self, parent:Optional[QWidget]=None, viewport:bool=True) -> None:
         super(Microscope, self).__init__(parent)
         self.viewport = viewport
         self.setMinimumWidth(300)
@@ -150,7 +159,7 @@ class Microscope(QWidget):
         self.color: bool = False
         self.fps: int = 5
         self.scaleBar: bool = False
-        self.crop: List[int] = []
+        self.crop: Optional[QRect] = None 
         self.scale: List[int] = []
         self.rubberBand: "ResizableRubberBand|None" = None
         self._grid_color: "QColor|None"= None
@@ -317,7 +326,7 @@ class Microscope(QWidget):
         self.drawBoxes = not self.drawBoxes
     
     def _reset_crop(self) -> None:
-        self.crop = []
+        self.crop = None
 
     def _crop_image(self) -> None:
         if self.rubberBand:
@@ -329,7 +338,7 @@ class Microscope(QWidget):
             y = int(rect_y*ht_scaling_factor)
             wd = int(rect_width*width_scaling_factor)
             ht = int(rect_ht*ht_scaling_factor)  
-            self.crop = [x,y,wd,ht]
+            self.crop = QRect(x,y,wd,ht)
             self.rubberBand.hide()
 
     def update_grid(self, start: QPoint, end: QPoint) -> None:
@@ -345,11 +354,14 @@ class Microscope(QWidget):
 
     def updateImageData(self, image: QImage):
         """ Triggered when the new image is ready, update the view. """
-        self.image.loadFromData(image, 'JPG')
+        if isinstance(image, QByteArray):
+            self.image.loadFromData(image, 'JPG')
+        else:
+            self.image = image
         self.org_image_ht = self.image.height()
         self.org_image_wd = self.image.width()
-        if len(self.crop) == 4:
-            self.image = self.image.copy(self.crop[0], self.crop[1], self.crop[2], self.crop[3])
+        if self.crop:
+            self.image = self.image.copy(self.crop)
         if len(self.scale) == 2:
             if self.scale[0] > 0:
                 self.image = self.image.scaledToWidth(self.scale[0])
@@ -360,8 +372,8 @@ class Microscope(QWidget):
         self.update()
 
     def resizeImage(self):
-        if len(self.crop) == 4:
-            self.image = self.image.copy(self.crop[0], self.crop[1], self.crop[2], self.crop[3])
+        if self.crop:
+            self.image = self.image.copy(self.crop)
         if len(self.scale) == 2:
             if self.scale[0] > 0:
                 self.image = self.image.scaledToWidth(self.scale[0])
