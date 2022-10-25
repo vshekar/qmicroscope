@@ -114,8 +114,10 @@ class Microscope(QWidget):
         self.fps: int = 5
         self.scaleBar: bool = False
         self.crop: Optional[QRect] = None 
+        self.startCrop: bool = False
         self.scale: List[int] = []
         self.rubberBand: "ResizableRubberBand|None" = None
+        self.zoomRubberBand: "Optional[ResizableRubberBand]" = None
         self._grid_color: "QColor|None"= None
 
         self.url: str = 'http://localhost:9998/jpg/image.jpg'
@@ -229,26 +231,34 @@ class Microscope(QWidget):
 
     def mousePressEvent(self, a0: QMouseEvent):
         if a0.buttons() == Qt.LeftButton:
-            pos = a0.pos()
-            #self.roiClicked.emit(pos.x(), pos.y())
-            #self.clicks.append(pos)
-            self.temp_start = pos
-        #self.end = pos
-        #self.update()
-        if not self.rubberBand and not self.viewport:
+            self.temp_start = a0.pos()
+        if not self.rubberBand and not self.viewport and not self.startCrop:
             self.rubberBand = ResizableRubberBand(self)
             self.rubberBand.box_modified.connect(self.update_grid)
             self.rubberBand.setGeometry(QRect(self.start, QSize()))
             self.rubberBand.show()
+        elif not self.zoomRubberBand and not self.viewport and self.startCrop:
+            self.zoomRubberBand = ResizableRubberBand(self)
         else:
             self.clicked_url.emit(self.url)
 
     def mouseMoveEvent(self, a0: QMouseEvent):
-        if self.rubberBand and a0.buttons() == Qt.LeftButton:
+        if self.rubberBand and not self.startCrop and a0.buttons() == Qt.LeftButton:
             if self.rubberBand.isVisible():
                 self.rubberBand.setGeometry(QRect(self.start, a0.pos()).normalized())
                 self.start = self.temp_start
                 self.end = a0.pos()
+        if self.startCrop and a0.buttons() == Qt.LeftButton:
+            #if self.zoomRubberBand.isVisible():
+            self.zoomRubberBand.show()
+            self.zoomRubberBand.setGeometry(QRect(self.temp_start, a0.pos()).normalized())
+
+    def mouseReleaseEvent(self, a0: QMouseEvent) -> None:
+        if self.startCrop:
+            self._crop_image()
+            self.startCrop = False
+            self.unsetCursor()
+        return super().mouseReleaseEvent(a0)
     
     def contextMenuEvent(self, a0: QContextMenuEvent) -> None:
         super().contextMenuEvent(a0)
@@ -261,7 +271,7 @@ class Microscope(QWidget):
         
         if self.rubberBand:
             hide_show_action.triggered.connect(self.rubberBand.toggle_selector)
-            crop_action.triggered.connect(self._crop_image)
+            crop_action.triggered.connect(self._start_crop)
             reset_crop_action.triggered.connect(self._reset_crop)
             hide_show_grid_action.triggered.connect(self._toggle_grid)
             select_grid_color_action.triggered.connect(self._select_grid_color)
@@ -272,6 +282,10 @@ class Microscope(QWidget):
                               reset_crop_action])
         self.menu.move(a0.globalPos())
         self.menu.show()
+
+    def _start_crop(self) -> None:
+        self.startCrop = True
+        self.setCursor(Qt.CrossCursor)
     
     def _select_grid_color(self) -> None:
         self._grid_color = QColorDialog.getColor()
@@ -283,17 +297,17 @@ class Microscope(QWidget):
         self.crop = None
 
     def _crop_image(self) -> None:
-        if self.rubberBand:
+        if self.zoomRubberBand:
             width_scaling_factor = self.org_image_wd/self.image.width()
             ht_scaling_factor = self.org_image_ht/self.image.height()
 
-            rect_x, rect_y, rect_width, rect_ht = self.rubberBand.geometry().getRect()
+            rect_x, rect_y, rect_width, rect_ht = self.zoomRubberBand.geometry().getRect()
             x = int(rect_x*width_scaling_factor)
             y = int(rect_y*ht_scaling_factor)
             wd = int(rect_width*width_scaling_factor)
             ht = int(rect_ht*ht_scaling_factor)  
             self.crop = QRect(x,y,wd,ht)
-            self.rubberBand.hide()
+            self.zoomRubberBand.hide()
 
     def update_grid(self, start: QPoint, end: QPoint) -> None:
         self.start = start
