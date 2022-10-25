@@ -34,7 +34,7 @@ class Settings(QDialog):
         self.scale = QSpinBox()
         self.scale.setRange(0, 5000)
         self.scale.setSingleStep(10)
-        self.scale.setValue(0)
+        self.scale.setValue(100)
         self.fps = QSpinBox()
         self.fps.setRange(1, 30)
         self.fps.setValue(5)
@@ -45,8 +45,8 @@ class Settings(QDialog):
         self.yDivs.setRange(1, 50)
         self.yDivs.setValue(5)
         self.color = QCheckBox()
-        self.container = None
-        self.microscope = None
+        #self.container = None
+        #self.microscope: "Microscope|None" = None
 
         self.url = QLineEdit('http://localhost:9998/jpg/image.jpg')
         self.okButton = QPushButton('OK')
@@ -88,11 +88,11 @@ class Settings(QDialog):
         self.cameraCols.valueChanged.connect(self.cameraColsChanged)
         self.cameraRows.valueChanged.connect(self.cameraRowsChanged)
 
-    def setMicroscope(self, microscope):
+    def setMicroscope(self, microscope: "Microscope"):
         self.microscope = microscope
         self.updateForm()
 
-    def setContainer(self, container):
+    def setContainer(self, container: "Container"):
         # Store a reference to the container, default to widget 0.
         self.container = container
         self.setMicroscope(container.microscope(0))
@@ -139,6 +139,8 @@ class Settings(QDialog):
         self.container.update()
 
     def updateMicroscope(self):
+        if not self.microscope:
+            return 
         self.microscope.url = self.url.text()
         self.microscope.fps = self.fps.value()
         self.microscope.xDivs = self.xDivs.value()
@@ -148,6 +150,8 @@ class Settings(QDialog):
         self.microscope.update()
 
     def updateForm(self):
+        if not self.microscope:
+            return
         self.url.setText(self.microscope.url)
         self.fps.setValue(self.microscope.fps)
         self.xDivs.setValue(self.microscope.xDivs)
