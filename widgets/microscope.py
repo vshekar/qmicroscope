@@ -13,11 +13,11 @@ class Microscope(QWidget):
     
     def __init__(self, parent:Optional[QWidget]=None, viewport:bool=True) -> None:
         super(Microscope, self).__init__(parent)
+        self.image = QImage('image.jpg')
         self.widgetSettings = self.initSettings() # Keeps track of the state of the widget, can be passed around 
         self.viewport = viewport
         self.setMinimumWidth(300)
         self.setMinimumHeight(300)
-        self.image = QImage('image.jpg')
        
         self.drawBoxes = True
         self.scaleBar: bool = False
@@ -87,7 +87,7 @@ class Microscope(QWidget):
             painter.drawLine(x1, int(y1 + i * inc_y), x2, int(y1 + i * inc_y))
 
         # Now draw the color overlay thing if requested
-        if self.color:
+        if self.widgetSettings['color']:
             brushColor = QColor(0, 255, 0, 20)
             brush = QBrush(brushColor)
             painter.setBrush(brush)

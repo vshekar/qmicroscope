@@ -1,5 +1,5 @@
 
-from qtpy.QtCore import QPoint, QSize, Qt 
+from qtpy.QtCore import Signal, QPoint, QSize, Qt 
 from qtpy.QtGui import QBrush, QPainter, QPalette, QContextMenuEvent, QMouseEvent
 from qtpy.QtWidgets import QWidget, QRubberBand, QSizeGrip, QHBoxLayout 
 from typing import List, Any, Dict, Optional, NamedTuple

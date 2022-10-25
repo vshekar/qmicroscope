@@ -141,23 +141,23 @@ class Settings(QDialog):
     def updateMicroscope(self):
         if not self.microscope:
             return 
-        self.microscope.url = self.url.text()
-        self.microscope.fps = self.fps.value()
-        self.microscope.xDivs = self.xDivs.value()
-        self.microscope.yDivs = self.yDivs.value()
-        self.microscope.color = self.color.isChecked()
-        self.microscope.scale = [ self.scale.value(), 0 ]
+        self.microscope.widgetSettings['url'] = self.url.text()
+        self.microscope.widgetSettings['fps'] = self.fps.value()
+        self.microscope.widgetSettings['xDivs'] = self.xDivs.value()
+        self.microscope.widgetSettings['yDivs'] = self.yDivs.value()
+        self.microscope.widgetSettings['color'] = self.color.isChecked()
+        self.microscope.widgetSettings['scale'] = [ self.scale.value(), 0 ]
         self.microscope.update()
 
     def updateForm(self):
         if not self.microscope:
             return
-        self.url.setText(self.microscope.url)
-        self.fps.setValue(self.microscope.fps)
-        self.xDivs.setValue(self.microscope.xDivs)
-        self.yDivs.setValue(self.microscope.yDivs)
-        self.color.setChecked(self.microscope.color)
-        if len(self.microscope.scale) > 0:
-            self.scale.setValue(self.microscope.scale[0])
+        self.url.setText(self.microscope.widgetSettings['url'])
+        self.fps.setValue(self.microscope.widgetSettings['fps'])
+        self.xDivs.setValue(self.microscope.widgetSettings['xDivs'])
+        self.yDivs.setValue(self.microscope.widgetSettings['yDivs'])
+        self.color.setChecked(self.microscope.widgetSettings['color'])
+        if len(self.microscope.widgetSettings['scale']) > 0:
+            self.scale.setValue(self.microscope.widgetSettings['scale'][0])
 
 
