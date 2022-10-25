@@ -21,9 +21,9 @@ from qtpy.QtWidgets import (
     QWidget,
     QSplitter
 )
-from microscope.microscope import Microscope
-from microscope.container import Container
-from microscope.settings import Settings
+from widgets.microscope import Microscope
+from widgets.container import Container
+from widgets.settings import Settings
 
 class Form(QMainWindow):
     def __init__(self, parent=None):

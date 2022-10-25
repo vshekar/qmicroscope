@@ -20,7 +20,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from microscope.microscope import Microscope
+from widgets.microscope import Microscope
 
 
 class Form(QMainWindow):

@@ -1,8 +1,8 @@
 from qtpy.QtWidgets import ( QWidget, QGridLayout )
 from qtpy.QtGui import QPaintEvent
 from qtpy.QtCore import QSettings
-import microscope
-from microscope.microscope import Microscope
+import widgets
+from widgets.microscope import Microscope
 from typing import List
 
 """ A widget that contains one or more microscope widgets in a grid. """
@@ -133,9 +133,9 @@ class Container(QWidget):
         self.size = sz
         # Ensure the widgets are created, then load their settings.
         self.updateWidgets()
-        for i in range(len(self._widgets)):
+        for i, widget in enumerate(self._widgets):
             settings.beginGroup(f'Camera{i}')
-            self._widgets[i].readSettings(settings)
+            widget.readSettings(settings)
             settings.endGroup()
 
         settings.endGroup()
