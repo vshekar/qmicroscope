@@ -4,7 +4,7 @@ from qtpy.QtGui import QBrush, QColor, QFont, QImage, QPainter, QPalette, QConte
 from qtpy.QtWidgets import QWidget, QRubberBand, QSizeGrip, QHBoxLayout, QMenu, QAction, QColorDialog
 from typing import List, Any, Dict, Optional, NamedTuple
 
-from downloader import Downloader
+from .downloader import Downloader
 
 class ResizableRubberBand(QWidget):
     box_modified = Signal(QPoint, QPoint)
