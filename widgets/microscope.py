@@ -145,11 +145,12 @@ class Microscope(QWidget):
         
         if self.viewport:
             self.clicked_url.emit(self.widgetSettings['url'])
+            print(self.widgetSettings['url'])
         else:
             if not self.rubberBand and not self.startCrop:
                 self.rubberBand = ResizableRubberBand(self)
                 self.rubberBand.box_modified.connect(self.update_grid)
-                self.rubberBand.setGeometry(QRect(self.start, QSize()))
+                self.rubberBand.setGeometry(QRect(self.widgetSettings['start'], QSize()))
                 self.rubberBand.show()
             elif not self.zoomRubberBand and self.startCrop:
                 self.zoomRubberBand = ResizableRubberBand(self)
@@ -158,9 +159,9 @@ class Microscope(QWidget):
     def mouseMoveEvent(self, a0: QMouseEvent):
         if self.rubberBand and not self.startCrop and a0.buttons() == Qt.LeftButton:
             if self.rubberBand.isVisible():
-                self.rubberBand.setGeometry(QRect(self.start, a0.pos()).normalized())
-                self.start = self.temp_start
-                self.end = a0.pos()
+                self.rubberBand.setGeometry(QRect(self.widgetSettings['start'], a0.pos()).normalized())
+                self.widgetSettings['start'] = self.temp_start
+                self.widgetSettings['end'] = a0.pos()
         if self.startCrop and a0.buttons() == Qt.LeftButton:
             self.zoomRubberBand.show()
             self.zoomRubberBand.setGeometry(QRect(self.temp_start, a0.pos()).normalized())
@@ -222,8 +223,8 @@ class Microscope(QWidget):
             self.zoomRubberBand.hide()
 
     def update_grid(self, start: QPoint, end: QPoint) -> None:
-        self.start = start
-        self.end = end
+        self.widgetSettings['start'] = start
+        self.widgetSettings['end'] = end
 
     def sizeHint(self) -> QSize:
         return QSize(400, 400)

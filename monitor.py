@@ -84,7 +84,7 @@ class Form(QMainWindow):
         self.settingsDialog.setContainer(self.container)
 
     def set_main_microscope_url(self, url):
-        self.main_microscope.url = url
+        self.main_microscope.widgetSettings['url'] = url
         self.main_microscope.acquire(True)
 
     # event : QCloseEvent
