@@ -145,7 +145,6 @@ class Microscope(QWidget):
         
         if self.viewport:
             self.clicked_url.emit(self.widgetSettings['url'])
-            print(self.widgetSettings['url'])
         else:
             if not self.rubberBand and not self.startCrop:
                 self.rubberBand = ResizableRubberBand(self)
@@ -241,9 +240,9 @@ class Microscope(QWidget):
             self.image = image
         self.org_image_ht = self.image.height()
         self.org_image_wd = self.image.width()
+        scale: List[int] = self.widgetSettings['scale']
         if self.widgetSettings['crop']:
             self.image = self.image.copy(self.widgetSettings['crop'])
-        scale: List[int] = self.widgetSettings['scale']
         if len(scale) == 2:
             if scale[0] > 0:
                 self.image = self.image.scaledToWidth(scale[0])

@@ -36,8 +36,8 @@ class Form(QMainWindow):
         self.microscope = self.container.microscope(0)
         #self.microscope = Microscope(self)
         self.main_microscope = Microscope(self, viewport=False)
-        self.main_microscope.scale = [0, 500]
-        self.main_microscope.fps = 30
+        self.main_microscope.widgetSettings['scale'] = [0, 600]
+        self.main_microscope.widgetSettings['fps'] = 30
 
         self.startButton = QPushButton('Start')
         self.settingsButton = QPushButton('Settings')
