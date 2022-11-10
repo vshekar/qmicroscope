@@ -77,7 +77,7 @@ class Form(QMainWindow):
             self.microscope.roiClicked.connect(self.onRoiClicked)
 
         # Read the settings and persist them
-        settings = QSettings()
+        settings = QSettings('NSLS2', 'monitor')
         self.readSettings(settings)
 
         self.settingsDialog = Settings(self)
@@ -89,7 +89,7 @@ class Form(QMainWindow):
 
     # event : QCloseEvent
     def closeEvent(self, event):
-        settings = QSettings()
+        settings = QSettings('NSLS2','monitor')
         self.writeSettings(settings)
         event.accept()
 
