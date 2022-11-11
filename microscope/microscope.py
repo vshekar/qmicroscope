@@ -1,104 +1,30 @@
 import time
+from collections.abc import Iterable
 from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt, QSettings
-from qtpy.QtGui import QBrush, QColor, QFont, QImage, QPainter, QPalette, QContextMenuEvent, QMouseEvent, QPaintEvent
-from qtpy.QtWidgets import QWidget, QRubberBand, QSizeGrip, QHBoxLayout, QMenu, QAction, QColorDialog
+from qtpy.QtGui import QBrush, QColor, QFont, QImage, QPainter, QPalette, QContextMenuEvent, QMouseEvent, QPaintEvent, QPixmap
+from qtpy.QtWidgets import QWidget, QMenu, QAction, QColorDialog, QGraphicsScene, QGraphicsPixmapItem
 from typing import List, Any, Dict, Optional, NamedTuple
 
-from .downloader import Downloader
-
-class ResizableRubberBand(QWidget):
-    box_modified = Signal(QPoint, QPoint)
-
-    def __init__(self, parent:"QWidget|None"=None, 
-                       draggable: bool=True, dragging_threshold: int=1):
-        super().__init__(parent)
-
-        self.draggable: bool = draggable
-        self.dragging_threshold: int = dragging_threshold
-        self.mousePressPos: "QPoint|None" = None
-        self.mouseMovePos: "QPoint|None" = None
-        
-        self.setWindowFlags(Qt.SubWindow)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(
-            QSizeGrip(self), 0,
-            Qt.AlignLeft | Qt.AlignTop)
-        layout.addWidget(
-            QSizeGrip(self), 0,
-            Qt.AlignRight | Qt.AlignBottom)
-        self._band = QRubberBand(
-            QRubberBand.Rectangle, self)
-        self._band.setMaximumSize(QSize(self.parent().geometry().width(), 
-                                        self.parent().geometry().height()))
-        palette = QPalette()
-        palette.setBrush(QPalette.WindowText, QBrush(Qt.red))
-        self._band.setPalette(palette)    
-        self._band.setWindowOpacity(0.0)
-        self._band.show()
-        self.show()
-        
-    def resizeEvent(self, a0):
-        self._band.resize(self.size())
-        self.box_modified.emit(self.geometry().topLeft(), 
-                               self.geometry().bottomRight())
-
-    def paintEvent(self, a0):
-        # Get current window size
-        qp = QPainter()
-        qp.begin(self)
-        self.update()
-        qp.end()
-
-    def mousePressEvent(self, a0: QMouseEvent):
-        if self.draggable and a0.button() == Qt.RightButton:
-            self.mousePressPos = a0.globalPos()                # global
-            self.mouseMovePos = a0.globalPos() - self.pos()    # local
-    
-    def contextMenuEvent(self, a0: QContextMenuEvent) -> None:
-        a0.accept()
-
-    def mouseMoveEvent(self, a0: QMouseEvent):
-        if self.draggable and a0.buttons() == Qt.RightButton:
-            globalPos = a0.globalPos()
-            moved: QPoint = globalPos - self.mousePressPos
-            if moved.manhattanLength() > self.dragging_threshold:
-                # Move when user drag window more than dragging_threshold
-                diff: QPoint = globalPos - self.mouseMovePos
-                self.move(diff)
-                self.mouseMovePos = globalPos - self.pos()
-                self.box_modified.emit(self.geometry().topLeft(), self.geometry().bottomRight())
-        super().mouseMoveEvent(a0)
-
-    def mouseReleaseEvent(self, a0: QMouseEvent):
-        if self.mousePressPos is not None:
-            if a0.button() == Qt.RightButton:
-                moved: QPoint = a0.globalPos() - self.mousePressPos
-                if moved.manhattanLength() > self.dragging_threshold:
-                    # Do not call click event or so on
-                    a0.ignore()
-                self.mousePressPos = None
-                
-        super().mouseReleaseEvent(a0)
-    
-    def toggle_selector(self):
-        if self.isVisible():
-            self.hide()
-        else:
-            self.show()
-
+from .widgets.downloader import Downloader
+from .widgets.rubberband import ResizableRubberBand
+from .plugins.base_plugin import BasePlugin
 
 class Microscope(QWidget):
     roiClicked: Signal = Signal(int, int)
     clicked_url: Signal = Signal(str)
     
-    def __init__(self, parent:Optional[QWidget]=None, viewport:bool=True) -> None:
+    def __init__(self, parent:Optional[QWidget]=None, 
+                 viewport:bool=True, plugins: List[BasePlugin]=list()) -> None:
         super(Microscope, self).__init__(parent)
+        self.plugins = plugins
         self.viewport = viewport
         self.setMinimumWidth(300)
         self.setMinimumHeight(300)
         self.image = QImage('image.jpg')
-        
+        self.pixmap = QGraphicsPixmapItem(None)
+        self.scene = QGraphicsScene(self)
+        self.scene.addItem(self.pixmap)
+
         self.clicks = []
         self.center = QPoint(
             int(self.image.size().width() / 2), 
@@ -113,8 +39,6 @@ class Microscope(QWidget):
         self.color: bool = False
         self.fps: int = 5
         self.scaleBar: bool = False
-        self.crop: Optional[QRect] = None 
-        self.startCrop: bool = False
         self.scale: List[int] = []
         self.rubberBand: "ResizableRubberBand|None" = None
         self.zoomRubberBand: "Optional[ResizableRubberBand]" = None
@@ -237,10 +161,11 @@ class Microscope(QWidget):
             self.rubberBand.box_modified.connect(self.update_grid)
             self.rubberBand.setGeometry(QRect(self.start, QSize()))
             self.rubberBand.show()
-        elif not self.zoomRubberBand and not self.viewport and self.startCrop:
-            self.zoomRubberBand = ResizableRubberBand(self)
-        else:
+        elif self.viewport:
             self.clicked_url.emit(self.url)
+        
+        for plugin in self.plugins:
+            plugin.mouse_press_event(a0)
 
     def mouseMoveEvent(self, a0: QMouseEvent):
         if self.rubberBand and not self.startCrop and a0.buttons() == Qt.LeftButton:
@@ -248,44 +173,43 @@ class Microscope(QWidget):
                 self.rubberBand.setGeometry(QRect(self.start, a0.pos()).normalized())
                 self.start = self.temp_start
                 self.end = a0.pos()
-        if self.startCrop and a0.buttons() == Qt.LeftButton:
-            #if self.zoomRubberBand.isVisible():
-            self.zoomRubberBand.show()
-            self.zoomRubberBand.setGeometry(QRect(self.temp_start, a0.pos()).normalized())
+        
 
     def mouseReleaseEvent(self, a0: QMouseEvent) -> None:
-        if self.startCrop:
-            self._crop_image()
-            self.startCrop = False
-            self.unsetCursor()
-        return super().mouseReleaseEvent(a0)
+        pass
     
     def contextMenuEvent(self, a0: QContextMenuEvent) -> None:
         super().contextMenuEvent(a0)
         self.menu = QMenu(self)
         hide_show_action = QAction('Hide/Show selector', self)
-        crop_action = QAction('Zoom/Crop to selection', self)
+        # crop_action = QAction('Zoom/Crop to selection', self)
         reset_crop_action = QAction('Reset Zoom/Crop', self)
         hide_show_grid_action = QAction('Hide/Show Grid', self)
         select_grid_color_action = QAction('Change Grid color', self)
         
         if self.rubberBand:
             hide_show_action.triggered.connect(self.rubberBand.toggle_selector)
-            crop_action.triggered.connect(self._start_crop)
+            # crop_action.triggered.connect(self._start_crop)
             reset_crop_action.triggered.connect(self._reset_crop)
             hide_show_grid_action.triggered.connect(self._toggle_grid)
             select_grid_color_action.triggered.connect(self._select_grid_color)
+        
         self.menu.addActions([hide_show_grid_action, 
                               select_grid_color_action, 
                               hide_show_action, 
-                              crop_action, 
+                              # crop_action, 
                               reset_crop_action])
+        actions = []
+        for plugin in self.plugins:
+            context_menu_entry = plugin.context_menu_entry()
+            if isinstance(context_menu_entry, Iterable):
+                actions.extend(context_menu_entry)
+            else:
+                actions.append(context_menu_entry)
+        self.menu.addActions(actions)
         self.menu.move(a0.globalPos())
         self.menu.show()
 
-    def _start_crop(self) -> None:
-        self.startCrop = True
-        self.setCursor(Qt.CrossCursor)
     
     def _select_grid_color(self) -> None:
         self._grid_color = QColorDialog.getColor()
@@ -293,22 +217,7 @@ class Microscope(QWidget):
     def _toggle_grid(self) -> None:
         self.drawBoxes = not self.drawBoxes
     
-    def _reset_crop(self) -> None:
-        self.crop = None
-
-    def _crop_image(self) -> None:
-        if self.zoomRubberBand:
-            width_scaling_factor = self.org_image_wd/self.image.width()
-            ht_scaling_factor = self.org_image_ht/self.image.height()
-
-            rect_x, rect_y, rect_width, rect_ht = self.zoomRubberBand.geometry().getRect()
-            x = int(rect_x*width_scaling_factor)
-            y = int(rect_y*ht_scaling_factor)
-            wd = int(rect_width*width_scaling_factor)
-            ht = int(rect_ht*ht_scaling_factor)  
-            self.crop = QRect(x,y,wd,ht)
-            self.zoomRubberBand.hide()
-
+    
     def update_grid(self, start: QPoint, end: QPoint) -> None:
         self.start = start
         self.end = end
@@ -326,10 +235,9 @@ class Microscope(QWidget):
             self.image.loadFromData(image, 'JPG')
         else:
             self.image = image
-        self.org_image_ht = self.image.height()
-        self.org_image_wd = self.image.width()
-        if self.crop:
-            self.image = self.image.copy(self.crop)
+        for plugin in self.plugins:
+            self.image = plugin.update_image_data(self.image)
+
         if len(self.scale) == 2:
             if self.scale[0] > 0:
                 self.image = self.image.scaledToWidth(self.scale[0])
@@ -337,11 +245,11 @@ class Microscope(QWidget):
                 self.image = self.image.scaledToHeight(self.scale[1])
 
         self.updatedImageSize()
+        pixmap = QPixmap.fromImage(self.image)
+        self.pixmap.setPixmap(pixmap)
         self.update()
 
     def resizeImage(self):
-        if self.crop:
-            self.image = self.image.copy(self.crop)
         if len(self.scale) == 2:
             if self.scale[0] > 0:
                 self.image = self.image.scaledToWidth(self.scale[0])

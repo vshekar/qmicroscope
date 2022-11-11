@@ -21,7 +21,7 @@ class Downloader(QObject):
     def setUrl(self, url: str) -> None:
         self.url = url
         self.request.setUrl(QUrl(self.url))
-        if self.url.lower().endswith('mjpg'):
+        if self.url.lower().endswith('mjpg') or self.url.lower().endswith('cgi'):
             self.isMjpegFeed = True
             self.mjpegCamera = VideoCapture(self.url)
         else:
