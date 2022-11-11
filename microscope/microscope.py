@@ -2,7 +2,8 @@ import time
 from collections.abc import Iterable
 from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt, QSettings
 from qtpy.QtGui import QBrush, QColor, QFont, QImage, QPainter, QPalette, QContextMenuEvent, QMouseEvent, QPaintEvent, QPixmap
-from qtpy.QtWidgets import QWidget, QMenu, QAction, QColorDialog, QGraphicsScene, QGraphicsPixmapItem
+from qtpy.QtWidgets import (QWidget, QMenu, QAction, 
+                            QColorDialog, QGraphicsScene, QGraphicsPixmapItem, QVBoxLayout)
 from typing import List, Any, Dict, Optional, NamedTuple
 
 from .widgets.downloader import Downloader
@@ -24,6 +25,9 @@ class Microscope(QWidget):
         self.pixmap = QGraphicsPixmapItem(None)
         self.scene = QGraphicsScene(self)
         self.scene.addItem(self.pixmap)
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.scene)
+        self.setLayout(self.layout)
 
         self.clicks = []
         self.center = QPoint(
@@ -118,7 +122,7 @@ class Microscope(QWidget):
                     painter.drawRect(rect)
         rects2 = time.perf_counter()
 
-
+    """
     def paintEvent(self, a0: QPaintEvent) -> None:
         tic = time.perf_counter()
         painter = QPainter(self)
@@ -152,6 +156,8 @@ class Microscope(QWidget):
 
         painter.end()
         toc = time.perf_counter()
+    """
+    
 
     def mousePressEvent(self, a0: QMouseEvent):
         if a0.buttons() == Qt.LeftButton:
