@@ -141,8 +141,11 @@ class Microscope(QWidget):
             self.image.loadFromData(image, 'JPG')
         else:
             self.image = image
+        
+        #Loop through plugins to process video image
         for plugin in self.plugins:
-            self.image = plugin.update_image_data(self.image)
+            if plugin.updates_image:
+                self.image = plugin.update_image_data(self.image)
 
         if len(self.scale) == 2:
             if self.scale[0] > 0:
@@ -158,8 +161,8 @@ class Microscope(QWidget):
         rect = self.image.rect()
         ht = self.image.rect().height()
         wd = self.image.rect().width()
-        rect.setHeight(ht + 10)
-        rect.setWidth(wd + 10)
+        rect.setHeight(ht + 2)
+        rect.setWidth(wd + 2)
         self.view.setGeometry(rect)
         self.update()
 

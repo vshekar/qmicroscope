@@ -5,12 +5,12 @@ class BasePlugin(ABC):
 
     def __init__(self) -> None:
         self.name = 'Generic Plugin'
+        self.updates_image = False
     
     @abstractmethod
     def context_menu_entry(self):
         pass
 
-    @abstractmethod
     def update_image_data(self, image):
         return image
 

@@ -17,19 +17,25 @@ class GridPlugin(BasePlugin):
         self.end: QPoint = QPoint(1, 1)
         self.start_grid = False
         self._grid_color = None
+        self._grid_items = []
+        self._grid = None
         #self.end = QPoint(self.image.size().width(), self.image.size().height())
 
     def context_menu_entry(self):
 
         actions = []
         if self.rubberBand:
-            self.hide_show_action = QAction('Hide/Show selector', self.parent)
-            self.hide_show_grid_action = QAction('Hide/Show Grid', self.parent)
-            self.select_grid_color_action = QAction('Change Grid color', self.parent)
+            label = 'Hide Selector' if self.rubberBand.isVisible() else 'Show selector'
+            self.hide_show_action = QAction(label, self.parent)
             self.hide_show_action.triggered.connect(self.rubberBand.toggle_selector)
-            self.hide_show_grid_action.triggered.connect(self._toggle_grid)
-            self.select_grid_color_action.triggered.connect(self._select_grid_color)
-            actions.extend([self.hide_show_action, self.hide_show_grid_action, self.select_grid_color_action])
+            actions.append(self.hide_show_action)
+            if self._grid:
+                label = 'Hide Grid' if self._grid.isVisible() else 'Show Grid'
+                self.hide_show_grid_action = QAction(label, self.parent)
+                self.select_grid_color_action = QAction('Change Grid color', self.parent)
+                self.hide_show_grid_action.triggered.connect(self._toggle_grid)
+                self.select_grid_color_action.triggered.connect(self._select_grid_color)
+                actions.extend([self.hide_show_grid_action, self.select_grid_color_action])
         else:
             self.start_drawing_grid_action = QAction('Draw grid', self.parent)
             self.start_drawing_grid_action.triggered.connect(self._start_grid)
@@ -40,9 +46,15 @@ class GridPlugin(BasePlugin):
 
     def _select_grid_color(self) -> None:
         self._grid_color = QColorDialog.getColor()
+        if self._grid:
+            self.paintBoxes(self.parent.scene)
 
     def _toggle_grid(self) -> None:
-        self.drawBoxes = not self.drawBoxes
+        if self._grid:
+            if self._grid.isVisible():
+                self._grid.hide()
+            else:
+                self._grid.show()
 
     def _start_grid(self):
         self.start_grid = True
@@ -50,6 +62,7 @@ class GridPlugin(BasePlugin):
     def update_grid(self, start: QPoint, end: QPoint) -> None:
         self.start = start
         self.end = end
+        self.paintBoxes(self.parent.scene)
 
     def mouse_move_event(self, event: QMouseEvent):
         if self.start_grid:
@@ -57,7 +70,7 @@ class GridPlugin(BasePlugin):
                 if self.rubberBand.isVisible():
                     self.rubberBand.setGeometry(QRect(self.start, event.pos()).normalized())
                     self.end = event.pos()
-                    self.paintBoxes(self.parent.scene)
+                    
 
     def mouse_press_event(self, event: QMouseEvent):
         if self.start_grid:
@@ -71,12 +84,14 @@ class GridPlugin(BasePlugin):
                 self.rubberBand.show()
 
     def mouse_release_event(self, event: QMouseEvent):
+        self.paintBoxes(self.parent.scene)
         self.start_grid = False
 
-    def update_image_data(self, image):
-        return image
 
     def paintBoxes(self, scene: QGraphicsScene) -> None:
+        if self._grid:
+            scene.removeItem(self._grid)
+            self._grid_items = []
         rect = QRectF(
             self.start,
             self.end
@@ -86,7 +101,7 @@ class GridPlugin(BasePlugin):
         else:
             brushColor = QColor.fromRgb(0, 255, 0)
         pen=QPen(brushColor)
-        scene.addRect(rect, pen=pen)
+        self._grid_items.append(scene.addRect(rect, pen=pen))
         #painter.setPen(brushColor)
         #painter.drawRect(rect)
         # Now draw the lines for the boxes in the rectangle.
@@ -98,11 +113,14 @@ class GridPlugin(BasePlugin):
         inc_y = (y2 - y1) / self.parent.yDivs
         
         for i in range(1, self.parent.xDivs):
-            scene.addLine(int(x1 + i * inc_x), y1, int(x1 + i * inc_x), y2, pen=pen)
+            l = scene.addLine(int(x1 + i * inc_x), y1, int(x1 + i * inc_x), y2, pen=pen)
+            self._grid_items.append(l)
         for i in range(1, self.parent.yDivs):
-            scene.addLine(x1, int(y1 + i * inc_y), x2, int(y1 + i * inc_y), pen=pen)
-        
+            l = scene.addLine(x1, int(y1 + i * inc_y), x2, int(y1 + i * inc_y), pen=pen)
+            self._grid_items.append(l) 
         # Now draw the color overlay thing if requested
+        """
+        
         for i in range(0, self.parent.xDivs):
             for j in range(0, self.parent.yDivs):
                 #alpha = i / self.yDivs * 255
@@ -111,5 +129,8 @@ class GridPlugin(BasePlugin):
                 rect = QRectF(int(x1 + i * inc_x), 
                                 int(y1 + j * inc_y), 
                                 int(inc_x), int(inc_y))
-                scene.addRect(rect, pen=pen)
+                self._grid_items.append(scene.addRect(rect, pen=pen))
+        """
+        self._grid = scene.createItemGroup(self._grid_items)
+
     

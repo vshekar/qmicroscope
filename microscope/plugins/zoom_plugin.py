@@ -16,6 +16,7 @@ class ZoomPlugin(BasePlugin):
         self.startCrop = False
         self.parent = parent
         self.crop = None
+        self.updates_image = True
 
     def _crop_image(self) -> None:
         if self.zoomRubberBand:
