@@ -1,23 +1,27 @@
-from qtpy.QtWidgets import QWidgetAction, QWidget
+from qtpy.QtWidgets import QAction, QWidget
 from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt, QSettings
+from qtpy.QtGui import QMouseEvent
 
 from typing import List, Any, Dict, Optional, NamedTuple
 
-from ..widgets.rubberband import ResizableRubberBand
-from .base_plugin import BasePlugin
+from microscope.widgets.rubberband import ResizableRubberBand
+from microscope.plugins.base_plugin import BasePlugin
 
 class ZoomPlugin(BasePlugin):
 
     def __init__(self, parent: "Optional[QWidget]"=None):
+        super().__init__()
+        self.name = 'Zoom'
         self.zoomRubberBand: "Optional[ResizableRubberBand]" = None
         self.startCrop = False
         self.parent = parent
+        self.crop = None
 
     def _crop_image(self) -> None:
         if self.zoomRubberBand:
             width_scaling_factor = self.org_image_wd/self.parent.image.width()
             ht_scaling_factor = self.org_image_ht/self.parent.image.height()
-
+            
             rect_x, rect_y, rect_width, rect_ht = self.zoomRubberBand.geometry().getRect()
             x = int(rect_x*width_scaling_factor)
             y = int(rect_y*ht_scaling_factor)
@@ -25,22 +29,28 @@ class ZoomPlugin(BasePlugin):
             ht = int(rect_ht*ht_scaling_factor)  
             self.crop = QRect(x,y,wd,ht)
             self.zoomRubberBand.hide()
+            #self.zoomRubberBand.destroy()
+            self.zoomRubberBand = None
 
-    def _self_crop(self):
+    def _start_crop(self):
         self.startCrop = True
         if self.parent:
-            self.parent.setCursor()
+            self.parent.setCursor(Qt.CrossCursor)
 
     def context_menu_entry(self):
-        crop_action = QWidgetAction('Zoom/Crop to selection', self.parent)
-        crop_action.triggered.connect(self._start_crop)
-        reset_crop_action = QWidgetAction('Reset Zoom/Crop', self.parent)
-        reset_crop_action.triggered.connect(self._reset_crop)
-        return crop_action, reset_crop_action
+        actions = []
+        self.crop_action = QAction('Zoom/Crop to selection', self.parent)
+        self.crop_action.triggered.connect(self._start_crop)
+        actions.append(self.crop_action)
+        if self.crop:
+            self.reset_crop_action = QAction('Reset Zoom/Crop', self.parent)
+            self.reset_crop_action.triggered.connect(self._reset_crop)
+            actions.append(self.reset_crop_action)
+        return actions
 
     def mouse_press_event(self, event):
-        if not self.zoomRubberBand and self.startCrop:
-            self.zoomRubberBand = ResizableRubberBand(self)
+        if not self.zoomRubberBand and self.startCrop and event.buttons() == Qt.LeftButton:
+            self.zoomRubberBand = ResizableRubberBand(self.parent)
             self.temp_start = event.pos()
 
     def mouse_move_event(self, event):
@@ -52,7 +62,7 @@ class ZoomPlugin(BasePlugin):
         if self.startCrop:
             self._crop_image()
             self.startCrop = False
-            self.unsetCursor()
+            self.parent.unsetCursor()
 
     def update_image_data(self, image):
         self.org_image_ht = image.height()

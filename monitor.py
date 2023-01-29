@@ -24,6 +24,8 @@ from qtpy.QtWidgets import (
 from microscope.microscope import Microscope
 from microscope.container import Container
 from microscope.settings import Settings
+from microscope.plugins.zoom_plugin import ZoomPlugin
+from microscope.plugins.grid_plugin import GridPlugin
 
 class Form(QMainWindow):
     def __init__(self, parent=None):
@@ -35,7 +37,7 @@ class Form(QMainWindow):
         self.container.size = [2, 2]
         self.microscope = self.container.microscope(0)
         #self.microscope = Microscope(self)
-        self.main_microscope = Microscope(self, viewport=False)
+        self.main_microscope = Microscope(self, viewport=False, plugins=[ZoomPlugin, GridPlugin])
         self.main_microscope.scale = [0, 500]
         self.main_microscope.fps = 30
 
@@ -50,10 +52,11 @@ class Form(QMainWindow):
         #splitter1.addWidget(self.container)
 
         #layout.addWidget(splitter1)
-        layout.addStretch()
+        #layout.addStretch()
         layout.addWidget(self.main_microscope, 80)
         layout.addWidget(self.container, 20)
-        layout.addStretch()
+        #layout.addStretch()
+        layout.setAlignment(self.main_microscope, Qt.AlignCenter)
         
         hButtonBox = QHBoxLayout()
         hButtonBox.addStretch()
@@ -136,6 +139,7 @@ if __name__ == '__main__':
 
     # Create the Qt Application
     app = QApplication(sys.argv)
+    app.setStyle('Fusion')
 
     # Create and show the form
     form = Form()
