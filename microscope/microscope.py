@@ -96,7 +96,7 @@ class Microscope(QWidget):
     def mouse_press_event(self, a0: QMouseEvent):
         
         if self.viewport:
-            self.clicked_url.emit(self.url)
+            self.clicked_url.emit(self.settings_group)
         
         for plugin in self.plugins:
             plugin.mouse_press_event(a0)
@@ -212,15 +212,19 @@ class Microscope(QWidget):
 
     def readSettings(self, settings: QSettings):
         """ Read the settings for this microscope instance. """
+        self.settings_group = settings.group() # Keep a copy
         self.url = settings.value('url', 'http://localhost:9998/jpg/image.jpg')
-        print(f'url: {self.url}')
         self.fps = settings.value('fps', 5, type=int)
         self.xDivs = settings.value('xDivs', 5, type=int)
         self.yDivs = settings.value('yDivs', 5, type=int)
         self.color = settings.value('color', False, type=bool)
-        if settings.value('scaleW', -1, type=int) >= 0:
-            self.scale = [ settings.value('scaleW', 0, type=int),
-                           settings.value('scaleH', 0, type=int) ]
+
+        for plugin in self.plugins:
+            plugin.read_settings(settings)
+
+        if settings.value('scaleW', -1, type=int) >= 0 and self.viewport:
+            self.scale = [ settings.value('scaleW', 200, type=int),
+                           settings.value('scaleH', 200, type=int) ]
             self.resizeImage()
 
 
@@ -235,3 +239,6 @@ class Microscope(QWidget):
         if len(self.scale) == 2:
             settings.setValue('scaleW', self.scale[0])
             settings.setValue('scaleH', self.scale[1])
+
+        for plugin in self.plugins:
+            plugin.write_settings(settings)

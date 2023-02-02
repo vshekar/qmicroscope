@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from qtpy.QtGui import QMouseEvent
+from qtpy.QtCore import QSettings
 
 class BasePlugin(ABC):
 
@@ -26,4 +27,10 @@ class BasePlugin(ABC):
     def mouse_release_event(self, event: QMouseEvent):
         pass
 
-    
+    @abstractmethod
+    def read_settings(self, settings: QSettings):
+        pass
+
+    @abstractmethod
+    def write_settings(self, settings: QSettings):
+        pass

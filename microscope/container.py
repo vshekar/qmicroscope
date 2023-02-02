@@ -17,9 +17,9 @@ class Container(QWidget):
 
         self._widgets: "List[Microscope]" = []
         
-        if hasattr(self.parent_widget, 'set_main_microscope_url'):
+        if hasattr(self.parent_widget, 'setup_main_microscope'):
             microscope_widget = Microscope(self)
-            microscope_widget.clicked_url.connect(self.parent_widget.set_main_microscope_url)
+            microscope_widget.clicked_url.connect(self.parent_widget.setup_main_microscope)
         else:
             microscope_widget = Microscope(self, viewport=False)
 
@@ -98,8 +98,8 @@ class Container(QWidget):
             self._widgets = self._widgets[:self._count]
         while(len(self._widgets) < self._count):
             microscope_widget = Microscope(self)
-            if hasattr(self.parent_widget, 'set_main_microscope_url'):
-                microscope_widget.clicked_url.connect(self.parent_widget.set_main_microscope_url)
+            if hasattr(self.parent_widget, 'setup_main_microscope'):
+                microscope_widget.clicked_url.connect(self.parent_widget.setup_main_microscope)
             self._widgets.append(microscope_widget)
 
     def paintEvent(self, event: QPaintEvent) -> None:

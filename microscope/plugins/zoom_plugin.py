@@ -74,3 +74,13 @@ class ZoomPlugin(BasePlugin):
 
     def _reset_crop(self) -> None:
         self.crop = None
+
+    def read_settings(self, settings: QSettings):
+        settings.beginGroup(self.name)
+        self.crop = settings.value('crop', defaultValue=None)
+        settings.endGroup()
+
+    def write_settings(self, settings: QSettings):
+        settings.beginGroup(self.name)
+        settings.setValue('crop', self.crop)
+        settings.endGroup()

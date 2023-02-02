@@ -53,10 +53,7 @@ class Form(QMainWindow):
 
         #layout.addWidget(splitter1)
         #layout.addStretch()
-        layout.addWidget(self.main_microscope, 80)
-        layout.addWidget(self.container, 20)
-        #layout.addStretch()
-        layout.setAlignment(self.main_microscope, Qt.AlignCenter)
+        
         
         hButtonBox = QHBoxLayout()
         hButtonBox.addStretch()
@@ -65,6 +62,11 @@ class Form(QMainWindow):
         hButtonBox.addStretch()
         layout.addLayout(hButtonBox)
         layout.setAlignment(Qt.AlignCenter)
+
+        layout.addWidget(self.main_microscope, 80)
+        layout.addWidget(self.container, 20)
+        #layout.addStretch()
+        layout.setAlignment(self.main_microscope, Qt.AlignCenter)
 
         # Set main windows widget using our central layout
         widget = QWidget()
@@ -80,15 +82,26 @@ class Form(QMainWindow):
             self.microscope.roiClicked.connect(self.onRoiClicked)
 
         # Read the settings and persist them
-        settings = QSettings('NSLS2', 'monitor')
-        self.readSettings(settings)
+        self.settings = QSettings('NSLS2', 'monitor')
+        self.readSettings(self.settings)
+        self.current_settings_group = None
 
         self.settingsDialog = Settings(self)
         self.settingsDialog.setContainer(self.container)
 
-    def set_main_microscope_url(self, url):
-        self.main_microscope.url = url
+    def setup_main_microscope(self, settings_group: str):
+        if self.current_settings_group:
+            # Write the existing state of main_microscope to settings
+            self.main_microscope.acquire(False)
+            self.settings.beginGroup(self.current_settings_group)
+            self.main_microscope.writeSettings(self.settings)
+            self.settings.endGroup()
+        # Read the state of the selected group
+        self.settings.beginGroup(settings_group)
+        self.main_microscope.readSettings(self.settings)
         self.main_microscope.acquire(True)
+        self.settings.endGroup()
+        self.current_settings_group = settings_group
 
     # event : QCloseEvent
     def closeEvent(self, event):
