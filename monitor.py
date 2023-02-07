@@ -26,18 +26,22 @@ from microscope.container import Container
 from microscope.settings import Settings
 from microscope.plugins.zoom_plugin import ZoomPlugin
 from microscope.plugins.grid_plugin import GridPlugin
+from microscope.plugins.preset_plugin import PresetPlugin
+from microscope.plugins.toggle_plugin import TogglePlugin
+from microscope.plugins.crosshair_plugin import CrossHairPlugin
 
 class Form(QMainWindow):
     def __init__(self, parent=None):
         super(Form, self).__init__(parent)
         # Create widgets
         self.setWindowTitle("NSLS-II Microscope Widget")
-        self.container = Container(self)
+        self.container = Container(self, plugins=[TogglePlugin])
         self.container.count = 3
         self.container.size = [2, 2]
         self.microscope = self.container.microscope(0)
         #self.microscope = Microscope(self)
-        self.main_microscope = Microscope(self, viewport=False, plugins=[ZoomPlugin, GridPlugin])
+        plugins = [ZoomPlugin, GridPlugin, CrossHairPlugin, PresetPlugin]
+        self.main_microscope = Microscope(self, viewport=False, plugins=plugins)
         self.main_microscope.scale = [0, 500]
         self.main_microscope.fps = 30
 
@@ -89,13 +93,16 @@ class Form(QMainWindow):
         self.settingsDialog = Settings(self)
         self.settingsDialog.setContainer(self.container)
 
-    def setup_main_microscope(self, settings_group: str):
-        if self.current_settings_group:
+    def save_main_microscope(self):
+       if self.current_settings_group:
             # Write the existing state of main_microscope to settings
-            self.main_microscope.acquire(False)
-            self.settings.beginGroup(self.current_settings_group)
-            self.main_microscope.writeSettings(self.settings)
-            self.settings.endGroup()
+            self.main_microscope.writeSettings(self.settings, settings_group=self.current_settings_group)
+            
+ 
+
+    def setup_main_microscope(self, settings_group: str):
+        self.main_microscope.acquire(False)
+        self.save_main_microscope()
         # Read the state of the selected group
         self.settings.beginGroup(settings_group)
         self.main_microscope.readSettings(self.settings)

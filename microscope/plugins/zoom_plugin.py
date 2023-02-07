@@ -1,22 +1,20 @@
 from qtpy.QtWidgets import QAction, QWidget
-from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt, QSettings
-from qtpy.QtGui import QMouseEvent
+from qtpy.QtCore import QRect, Qt
 
-from typing import List, Any, Dict, Optional, NamedTuple
+from typing import Any, Dict, Optional
 
 from microscope.widgets.rubberband import ResizableRubberBand
-from microscope.plugins.base_plugin import BasePlugin
+from microscope.plugins.base_plugin import BaseImagePlugin
 
-class ZoomPlugin(BasePlugin):
+class ZoomPlugin(BaseImagePlugin):
 
     def __init__(self, parent: "Optional[QWidget]"=None):
-        super().__init__()
+        super().__init__(parent)
         self.name = 'Zoom'
         self.zoomRubberBand: "Optional[ResizableRubberBand]" = None
         self.startCrop = False
         self.parent = parent
         self.crop = None
-        self.updates_image = True
 
     def _crop_image(self) -> None:
         if self.zoomRubberBand:
@@ -75,12 +73,9 @@ class ZoomPlugin(BasePlugin):
     def _reset_crop(self) -> None:
         self.crop = None
 
-    def read_settings(self, settings: QSettings):
-        settings.beginGroup(self.name)
-        self.crop = settings.value('crop', defaultValue=None)
-        settings.endGroup()
+    def read_settings(self, settings: Dict[str, Any]):
+        self.crop = settings.get('crop', None)
+        
 
-    def write_settings(self, settings: QSettings):
-        settings.beginGroup(self.name)
-        settings.setValue('crop', self.crop)
-        settings.endGroup()
+    def write_settings(self) -> Dict[str, Any]:
+        return {'crop': self.crop}

@@ -10,6 +10,7 @@ from typing import List, Any, Dict, Optional, NamedTuple
 from .widgets.downloader import Downloader
 from .widgets.rubberband import ResizableRubberBand
 from .plugins.base_plugin import BasePlugin
+from .plugin_settings import PluginSettingsDialog
 
 class Microscope(QWidget):
     roiClicked: Signal = Signal(int, int)
@@ -32,30 +33,19 @@ class Microscope(QWidget):
         self.layout.addWidget(self.view)
         self.setLayout(self.layout)
 
-        self.clicks = []
-        self.center = QPoint(
-            int(self.image.size().width() / 2), 
-            int(self.image.size().height() / 2)
-        )
-        self.drawBoxes = False
-
         self.yDivs: int = 5
         self.xDivs: int = 5
         self.color: bool = False
         self.fps: int = 5
-        self.scaleBar: bool = False
         self.scale: List[int] = []
-        self.rubberBand: "ResizableRubberBand|None" = None
-        self.zoomRubberBand: "Optional[ResizableRubberBand]" = None
-        self._grid_color: "QColor|None"= None
-
+        
         self.url: str = 'http://localhost:8080/output.jpg'
-
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.updateImage)
 
         self.downloader = Downloader(self)
         self.downloader.imageReady.connect(self.updateImageData)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.downloader.downloadData)
 
         self.plugins: List[BasePlugin] = []
         for plugin_cls in self.plugin_classes:
@@ -79,9 +69,6 @@ class Microscope(QWidget):
         else:
             self.timer.stop()
 
-
-
-    
 
     def eventFilter(self, obj, event):
         if obj is self.view.viewport():
@@ -110,30 +97,39 @@ class Microscope(QWidget):
             plugin.mouse_release_event(a0) 
     
     def contextMenuEvent(self, a0: QContextMenuEvent) -> None:
+        """Add entries into the context menu based on plugins used
+        """
         super().contextMenuEvent(a0)
         self.menu = QMenu(self)
-        #actions = []
         for plugin in self.plugins:
             self.menu.addSection(plugin.name)
             context_menu_entry = plugin.context_menu_entry()
-            actions = []
-            if isinstance(context_menu_entry, Iterable):
-                actions.extend(context_menu_entry)
-            else:
-                actions.append(context_menu_entry)
-            self.menu.addActions(actions)
             
+            if isinstance(context_menu_entry, Iterable):
+                for item in context_menu_entry:
+                    self.addMenuItem(item)
+            else:
+                self.addMenuItem(context_menu_entry)
+        
+        config_plugins_action = QAction('Configure Plugins', self)
+        config_plugins_action.triggered.connect(self._config_plugins)
+        self.addMenuItem(config_plugins_action)
         self.menu.move(a0.globalPos())
         self.menu.show()
     
+    def addMenuItem(self, item):
+        if isinstance(item, QAction):
+            self.menu.addAction(item)
+        elif isinstance(item, QMenu):
+            self.menu.addMenu(item)
 
+    def _config_plugins(self):
+        plugin_settings_dialog = PluginSettingsDialog(parent=self, plugins=self.plugins)
+        
 
     def sizeHint(self) -> QSize:
         return QSize(400, 400)
-
-    def updateImage(self):
-        """ Request an updated image asynchronously. """
-        self.downloader.downloadData()
+        
 
     def updateImageData(self, image: QImage):
         """ Triggered when the new image is ready, update the view. """
@@ -188,12 +184,12 @@ class Microscope(QWidget):
         if settings.has_key('color'):
             self.color = settings['color']
         if settings.has_key('scaleW'):
-            self.scale = [ settings['scaleW'], 0 ]
+            self.scale = [ settings['scaleW'], 200 ]
         if settings.has_key('scaleH'):
             if len(self.scale) == 2:
-                self.scale[1] = settings['scaleW']
+                self.scale[1] = 200 #settings['scaleW']
             else:
-                self.scale = [ 0, settings['scaleW'] ]
+                self.scale = [ 200, settings['scaleW'] ]
 
 
     def writeToDict(self):
@@ -213,6 +209,7 @@ class Microscope(QWidget):
     def readSettings(self, settings: QSettings):
         """ Read the settings for this microscope instance. """
         self.settings_group = settings.group() # Keep a copy
+        self.settings = settings
         self.url = settings.value('url', 'http://localhost:9998/jpg/image.jpg')
         self.fps = settings.value('fps', 5, type=int)
         self.xDivs = settings.value('xDivs', 5, type=int)
@@ -220,7 +217,12 @@ class Microscope(QWidget):
         self.color = settings.value('color', False, type=bool)
 
         for plugin in self.plugins:
-            plugin.read_settings(settings)
+            settings.beginGroup(plugin.name)
+            settings_values = {}
+            for key in settings.allKeys():
+                settings_values[key] = settings.value(key)
+            plugin.read_settings(settings_values)
+            settings.endGroup()
 
         if settings.value('scaleW', -1, type=int) >= 0 and self.viewport:
             self.scale = [ settings.value('scaleW', 200, type=int),
@@ -228,9 +230,15 @@ class Microscope(QWidget):
             self.resizeImage()
 
 
-
-    def writeSettings(self, settings: QSettings):
+    def writeSettings(self, settings: Optional[QSettings] = None, settings_group: Optional[str] = None):
         """ Write the settings for this microscope instance. """
+        if not settings:
+            settings = self.settings
+
+        if not settings_group:
+            settings_group = self.settings_group
+        
+        settings.beginGroup(settings_group)
         settings.setValue('url', self.url)
         settings.setValue('fps', self.fps)
         settings.setValue('xDivs', self.xDivs)
@@ -241,4 +249,9 @@ class Microscope(QWidget):
             settings.setValue('scaleH', self.scale[1])
 
         for plugin in self.plugins:
-            plugin.write_settings(settings)
+            settings.beginGroup(plugin.name)
+            settings_values = plugin.write_settings()
+            for key, value in settings_values.items():
+                settings.setValue(key, value)
+            settings.endGroup()
+        settings.endGroup()
