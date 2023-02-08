@@ -78,7 +78,35 @@ class Microscope(QWidget):
                 self.mouse_release_event(event)
             if event.type() == QEvent.MouseMove:
                 self.mouse_move_event(event)
+            if event.type() == QEvent.Wheel:
+                self.mouse_wheel_event(event)
         return QWidget.eventFilter(self, obj, event)
+
+    def mouse_wheel_event(self, event):
+        # Zoom Factor
+        zoomInFactor = 1.05
+        zoomOutFactor = 1 / zoomInFactor
+
+        # Set Anchors
+        self.view.setTransformationAnchor(QGraphicsView.NoAnchor)
+        self.view.setResizeAnchor(QGraphicsView.NoAnchor)
+
+        # Save the scene pos
+        oldPos = self.view.mapToScene(event.pos())
+
+        # Zoom
+        if event.angleDelta().y() > 0:
+            zoomFactor = zoomInFactor
+        else:
+            zoomFactor = zoomOutFactor
+        self.view.scale(zoomFactor, zoomFactor)
+
+        # Get the new position
+        newPos = self.view.mapToScene(event.pos())
+
+        # Move scene to old position
+        delta = newPos - oldPos
+        self.view.translate(delta.x(), delta.y())
 
     def mouse_press_event(self, a0: QMouseEvent):
         
@@ -101,6 +129,10 @@ class Microscope(QWidget):
         """
         super().contextMenuEvent(a0)
         self.menu = QMenu(self)
+        config_plugins_action = QAction('Configure Plugins', self)
+        config_plugins_action.triggered.connect(self._config_plugins)
+        self.addMenuItem(config_plugins_action)
+        
         for plugin in self.plugins:
             self.menu.addSection(plugin.name)
             context_menu_entry = plugin.context_menu_entry()
@@ -111,9 +143,7 @@ class Microscope(QWidget):
             else:
                 self.addMenuItem(context_menu_entry)
         
-        config_plugins_action = QAction('Configure Plugins', self)
-        config_plugins_action.triggered.connect(self._config_plugins)
-        self.addMenuItem(config_plugins_action)
+        
         self.menu.move(a0.globalPos())
         self.menu.show()
     

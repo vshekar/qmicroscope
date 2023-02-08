@@ -67,9 +67,9 @@ class CrossHairPlugin(BaseImagePlugin):
 
     def context_menu_entry(self):
         actions = []
-        change_color_action = QAction('Change Color', self.parent)
-        change_color_action.triggered.connect(self._change_color)
-        actions.append(change_color_action)
+        #change_color_action = QAction('Change Color', self.parent)
+        #change_color_action.triggered.connect(self._change_color)
+        #actions.append(change_color_action)
         visible_action = QAction('Visible', self.parent, checkable=True, checked=self._visible)
         visible_action.triggered.connect(self._toggle_visibility)
         actions.append(visible_action)
