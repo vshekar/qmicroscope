@@ -28,15 +28,20 @@ class GridPlugin(BasePlugin):
         self.plugin_state = defaultdict(bool)
         self._x_divs = 5
         self._y_divs = 5
+
+    def convert_str_bool(self, val):
+        if isinstance(val, str):
+            return True if val.lower() == 'true' else False
+        return val
         
     def read_settings(self, settings: Dict[str, Any]):
         
         self._grid_color = settings.get('color', QColor.fromRgb(0, 255, 0))
         self.start = settings.get('start', QPoint(0, 0))
         self.end = settings.get('end', QPoint(1, 1))
-        self.plugin_state['grid_hidden'] = settings.get('grid_hidden', False)
-        self.plugin_state['selector_hidden'] = settings.get('selector_hidden', False)
-        self.plugin_state['grid_defined'] = settings.get('grid_defined', False)
+        self.plugin_state['grid_hidden'] = self.convert_str_bool(settings.get('grid_hidden', False))
+        self.plugin_state['selector_hidden'] = self.convert_str_bool(settings.get('selector_hidden', False))
+        self.plugin_state['grid_defined'] = self.convert_str_bool(settings.get('grid_defined', False))
         
 
         if self.rubberBand:

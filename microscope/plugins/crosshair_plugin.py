@@ -25,14 +25,15 @@ class CrossHairPlugin(BaseImagePlugin):
     def read_settings(self, settings: Dict[str, Any]):
         self._color = settings.get('color', self._color)
         self._pos = settings.get('pos', self._pos)
-        self._horizontal_length = settings.get('hor_len', self._horizontal_length)
-        self._vertical_length = settings.get('vert_len', self._vertical_length)
+        self._horizontal_length = int(settings.get('hor_len', self._horizontal_length))
+        self._vertical_length = int(settings.get('vert_len', self._vertical_length))
         self._visible = settings.get('visible', self._visible)
+        if isinstance(self._visible, str):
+            self._visible = True if self._visible.lower() == 'true' else False
         self._always_centered = settings.get('always_centered', True)
-
-
-        if self._visible:
-            self._paint_crosshair(self.parent.scene)
+        if isinstance(self._always_centered, str):
+            self._always_centered = True if self._always_centered.lower() == 'true' else False
+        self._paint_crosshair(self.parent.scene)
 
     def update_image_data(self, image):
         if self._always_centered:
@@ -53,6 +54,7 @@ class CrossHairPlugin(BaseImagePlugin):
         if self._always_centered:
             self._pos = QPoint(int(self.parent.view.width()/2), 
                            int(self.parent.view.height()/2)) 
+
         start_point = self._pos - QPoint(int(self._horizontal_length/2),0)
         end_point = self._pos + QPoint(int(self._horizontal_length/2),0) 
         hor_line = QLineF(start_point, end_point)
@@ -61,7 +63,10 @@ class CrossHairPlugin(BaseImagePlugin):
         start_point = self._pos + QPoint(0, int(self._vertical_length/2))
         end_point = self._pos - QPoint(0, int(self._vertical_length/2))
         vert_line = QLineF(start_point, end_point)
-        self._vert_line = scene.addLine(vert_line, pen) 
+        self._vert_line = scene.addLine(vert_line, pen)
+
+        self._toggle_visibility(self._visible)
+
 
     
 
@@ -70,13 +75,15 @@ class CrossHairPlugin(BaseImagePlugin):
         #change_color_action = QAction('Change Color', self.parent)
         #change_color_action.triggered.connect(self._change_color)
         #actions.append(change_color_action)
+        print(self._visible)
         visible_action = QAction('Visible', self.parent, checkable=True, checked=self._visible)
         visible_action.triggered.connect(self._toggle_visibility)
         actions.append(visible_action)
         return actions
 
-    def _toggle_visibility(self):
-        self._visible = not self._visible
+    def _toggle_visibility(self, value):
+        #self._visible = not self._visible
+        self._visible = value
         self._hor_line.setVisible(self._visible)
         self._vert_line.setVisible(self._visible)
 
@@ -142,8 +149,8 @@ class CrossHairPlugin(BaseImagePlugin):
 
     def save_settings(self, settings_groupbox) -> None:
         self._color = self.color_setting_widget.color()
-        self._horizontal_length = self.hor_len_setting_widget.value()
-        self._vertical_length = self.vert_len_settings_widget.value()
+        self._horizontal_length = int(self.hor_len_setting_widget.value())
+        self._vertical_length = int(self.vert_len_settings_widget.value())
         self._always_centered = self.always_centered_checkbox.isChecked()
         self._pos.setX(self.x_pos_widget.value())
         self._pos.setY(self.y_pos_widget.value())
