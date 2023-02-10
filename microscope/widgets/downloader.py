@@ -4,6 +4,9 @@ from qtpy.QtGui import  QImage
 from qtpy.QtNetwork import QNetworkReply, QNetworkRequest, QNetworkAccessManager
 from typing import List, Any, Dict, Optional, NamedTuple
 from cv2 import VideoCapture
+import urllib.request
+from io import BytesIO
+from PIL import Image, ImageQt
 
 class Downloader(QObject):
     imageReady = Signal(object)
@@ -56,13 +59,12 @@ class VideoThread(QThread):
 
     def camera_refresh(self):
         """ Only request a new image if this is the first/last completed. """
-        if self.reply is None and not self.isMjpegFeed:
-            self.reply = self.manager.get(self.request)
-            if self.reply:
-                self.buffer = self.reply.readAll()
-                self.imageReady.emit(self.buffer)
-                self.reply.deleteLater()
-                self.reply = None
+        if not self.isMjpegFeed:
+            file = BytesIO(urllib.request.urlopen(self.url, timeout=1000/self.fps).read())
+            img = Image.open(file)
+            qimage = ImageQt.ImageQt(img)
+            self.showing_error = False
+            self.imageReady.emit(qimage)
 
         elif self.isMjpegFeed and self.mjpegCamera:
             retVal, currentFrame = self.mjpegCamera.read()
@@ -80,12 +82,13 @@ class VideoThread(QThread):
         self.fps = fps
         self.url = url
         self.showing_error = False
-        self.manager = QNetworkAccessManager()
+        self.manager = QNetworkAccessManager(self)
         self.request = QNetworkRequest()
         self.request.setUrl(QUrl(self.url))
         self.buffer = QByteArray()
         self.reply: Optional[QNetworkReply] = None
         self.isMjpegFeed = False
+        self.acquire = True
 
     def setUrl(self, url: str) -> None:
         self.url = url
@@ -96,11 +99,21 @@ class VideoThread(QThread):
         else:
             self.isMjpegFeed = False
             self.mjpegCamera = None
+
+    def setFPS(self, fps: int) -> None:
+        self.fps = fps
     
     def updateCam(self, camera_object):
         self.camera_object = camera_object
         
     def run(self):
-        while True:
+        while self.acquire:
             self.camera_refresh()
             self.msleep(int(1000/self.fps))
+
+    def start(self):
+        self.acquire = True
+        super().start()
+
+    def stop(self):
+        self.acquire = False

@@ -64,17 +64,13 @@ class Microscope(QWidget):
     def acquire(self, start: bool=True) -> None:
         #self.downloader.setUrl(self.url)
         #print(self.url)
-        self.videoThread.setUrl(self.url)
-        self.videoThread.start()
-        """
         if start:
-            self.timer.start(int(1000.0 / self.fps))
-        else:
-            self.timer.stop()
-        """
+            self.videoThread.setUrl(self.url)
+            self.videoThread.setFPS(self.fps)
+            self.videoThread.start()
+        elif self.videoThread.isRunning() and not start:
+            self.videoThread.stop()
         
-
-
     def eventFilter(self, obj, event):
         if obj is self.view.viewport():
             if event.type() == QEvent.MouseButtonPress:
