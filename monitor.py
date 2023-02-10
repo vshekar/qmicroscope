@@ -29,6 +29,7 @@ from microscope.plugins.grid_plugin import GridPlugin
 from microscope.plugins.preset_plugin import PresetPlugin
 from microscope.plugins.toggle_plugin import TogglePlugin
 from microscope.plugins.crosshair_plugin import CrossHairPlugin
+from microscope.plugins.record_plugin import RecordPlugin
 
 class Form(QMainWindow):
     def __init__(self, parent=None):
@@ -40,7 +41,7 @@ class Form(QMainWindow):
         self.container.size = [2, 2]
         self.microscope = self.container.microscope(0)
         #self.microscope = Microscope(self)
-        plugins = [ZoomPlugin, GridPlugin, CrossHairPlugin, PresetPlugin]
+        plugins = [ZoomPlugin, GridPlugin, CrossHairPlugin, PresetPlugin, RecordPlugin]
         self.main_microscope = Microscope(self, viewport=False, plugins=plugins)
         self.main_microscope.scale = [0, 500]
         self.main_microscope.fps = 30

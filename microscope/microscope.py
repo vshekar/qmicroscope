@@ -7,7 +7,7 @@ from qtpy.QtWidgets import (QWidget, QMenu, QAction, QGraphicsView,
                             QColorDialog, QGraphicsScene, QGraphicsPixmapItem, QVBoxLayout)
 from typing import List, Any, Dict, Optional, NamedTuple
 
-from .widgets.downloader import Downloader
+from .widgets.downloader import Downloader, VideoThread
 from .widgets.rubberband import ResizableRubberBand
 from .plugins.base_plugin import BasePlugin
 from .plugin_settings import PluginSettingsDialog
@@ -41,11 +41,13 @@ class Microscope(QWidget):
         
         self.url: str = 'http://localhost:8080/output.jpg'
 
-        self.downloader = Downloader(self)
-        self.downloader.imageReady.connect(self.updateImageData)
+        #self.downloader = Downloader(self)
+        #self.downloader.imageReady.connect(self.updateImageData)
+        self.videoThread = VideoThread(fps=self.fps, url=self.url, parent=self)
+        self.videoThread.imageReady.connect(self.updateImageData)
 
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.downloader.downloadData)
+        #self.timer = QTimer(self)
+        #self.timer.timeout.connect(self.downloader.downloadData)
 
         self.plugins: List[BasePlugin] = []
         for plugin_cls in self.plugin_classes:
@@ -63,11 +65,17 @@ class Microscope(QWidget):
             )
 
     def acquire(self, start: bool=True) -> None:
-        self.downloader.setUrl(self.url)
+        #self.downloader.setUrl(self.url)
+        #print(self.url)
+        self.videoThread.setUrl(self.url)
+        self.videoThread.start()
+        """
         if start:
             self.timer.start(int(1000.0 / self.fps))
         else:
             self.timer.stop()
+        """
+        
 
 
     def eventFilter(self, obj, event):
@@ -258,7 +266,7 @@ class Microscope(QWidget):
             self.scale = [ settings.value('scaleW', 200, type=int),
                            settings.value('scaleH', 200, type=int) ]
             self.resizeImage()
-
+        
 
     def writeSettings(self, settings: Optional[QSettings] = None, settings_group: Optional[str] = None):
         """ Write the settings for this microscope instance. """
