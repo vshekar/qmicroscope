@@ -1,14 +1,11 @@
-import time
 from collections.abc import Iterable
-from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt, QSettings, QEvent
-from qtpy.QtGui import (QBrush, QColor, QFont, QImage, QPainter, QPalette, 
-                        QContextMenuEvent, QMouseEvent, QPaintEvent, QPixmap)
+from qtpy.QtCore import Signal, QByteArray, QPoint, QSize, QSettings, QEvent
+from qtpy.QtGui import (QImage, QPainter, 
+                        QContextMenuEvent, QMouseEvent, QPixmap)
 from qtpy.QtWidgets import (QWidget, QMenu, QAction, QGraphicsView,
-                            QColorDialog, QGraphicsScene, QGraphicsPixmapItem, QVBoxLayout)
-from typing import List, Any, Dict, Optional, NamedTuple
-
-from .widgets.downloader import Downloader, VideoThread
-from .widgets.rubberband import ResizableRubberBand
+                            QGraphicsScene, QGraphicsPixmapItem, QVBoxLayout)
+from typing import List, Any, Dict, Optional
+from .widgets.downloader import VideoThread
 from .plugins.base_plugin import BasePlugin
 from .plugin_settings import PluginSettingsDialog
 

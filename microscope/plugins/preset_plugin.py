@@ -1,8 +1,9 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from qtpy.QtWidgets import QAction, QMenu, QInputDialog
 from microscope.plugins.base_plugin import BasePlugin
-from microscope.microscope import Microscope
 from qtpy.QtGui import QMouseEvent
+if TYPE_CHECKING:
+    from microscope.microscope import Microscope
 
 class PresetPlugin(BasePlugin):
     """Plugin to save the state of plugins into the settings file and give it a name

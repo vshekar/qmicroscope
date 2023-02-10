@@ -24,12 +24,9 @@ from qtpy.QtWidgets import (
 from microscope.microscope import Microscope
 from microscope.container import Container
 from microscope.settings import Settings
-from microscope.plugins.zoom_plugin import ZoomPlugin
-from microscope.plugins.grid_plugin import GridPlugin
-from microscope.plugins.preset_plugin import PresetPlugin
-from microscope.plugins.toggle_plugin import TogglePlugin
-from microscope.plugins.crosshair_plugin import CrossHairPlugin
-from microscope.plugins.record_plugin import RecordPlugin
+from microscope.plugins import (ZoomPlugin, GridPlugin, PresetPlugin, 
+                                TogglePlugin, CrossHairPlugin, RecordPlugin)
+
 
 class Form(QMainWindow):
     def __init__(self, parent=None):

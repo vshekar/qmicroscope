@@ -1,17 +1,15 @@
-from typing import Optional, Dict, Any
-from qtpy.QtWidgets import QAction, QWidget, QColorDialog, QGraphicsScene, QCheckBox
-from qtpy.QtCore import QPoint, Qt, QRect, QRectF, QSize, QSettings
-from qtpy.QtGui import QPainter, QColor, QBrush, QPen, QImage
-
+from typing import Dict, Any, TYPE_CHECKING
+from qtpy.QtWidgets import QAction
+from qtpy.QtGui import QImage
 from microscope.plugins.base_plugin import BaseImagePlugin
-from microscope.microscope import Microscope
 from qtpy.QtGui import QMouseEvent
-from collections import defaultdict
 import cv2 as cv
 import numpy as np
+if TYPE_CHECKING:
+    from microscope.microscope import Microscope
 
 class RecordPlugin(BaseImagePlugin):
-    def __init__(self, parent: Microscope) -> None:
+    def __init__(self, parent: "Microscope") -> None:
         super().__init__(parent)
         self.parent = parent
         self.name = 'Record'

@@ -1,15 +1,12 @@
-from typing import Optional, Dict, Any
-from qtpy.QtWidgets import QAction, QWidget, QColorDialog, QGraphicsScene, QCheckBox
-from qtpy.QtCore import QPoint, Qt, QRect, QRectF, QSize, QSettings 
-from qtpy.QtGui import QPainter, QColor, QBrush, QPen
-
+from typing import Optional, Dict, Any, TYPE_CHECKING
+from qtpy.QtWidgets import QCheckBox
 from microscope.plugins.base_plugin import BasePlugin
-from microscope.microscope import Microscope
 from qtpy.QtGui import QMouseEvent
-from collections import defaultdict
+if TYPE_CHECKING:
+    from microscope.microscope import Microscope
 
 class TogglePlugin(BasePlugin):
-    def __init__(self, parent: Microscope) -> None:
+    def __init__(self, parent: "Microscope") -> None:
         super().__init__(parent)
         self.parent = parent
         self.name = 'Toggle Plugin'

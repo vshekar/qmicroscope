@@ -2,14 +2,15 @@ from microscope.plugins.base_plugin import BaseImagePlugin
 from qtpy.QtGui import QColor, QPen, QMouseEvent
 from qtpy.QtCore import QPoint, QLineF
 from qtpy.QtWidgets import (QGraphicsScene, QAction, QColorDialog, 
-                            QGroupBox, QFormLayout, QLineEdit, QSpinBox,
+                            QGroupBox, QFormLayout, QSpinBox,
                             QCheckBox, QHBoxLayout)
-from microscope.microscope import Microscope
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from microscope.widgets.color_button import ColorButton
+if TYPE_CHECKING:
+    from microscope.microscope import Microscope
 
 class CrossHairPlugin(BaseImagePlugin):
-    def __init__(self, parent: Microscope) -> None:
+    def __init__(self, parent: "Microscope") -> None:
         super().__init__(parent)
         self.name = 'Crosshair'
         self._color = QColor.fromRgb(0, 255, 0)

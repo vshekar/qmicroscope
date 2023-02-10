@@ -1,16 +1,16 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from qtpy.QtWidgets import (QAction, QColorDialog, QGraphicsScene, 
-                            QGroupBox, QFormLayout, QHBoxLayout, QVBoxLayout,
+                            QGroupBox, QFormLayout, QHBoxLayout,
                             QSpinBox, QLabel)
 from qtpy.QtCore import QPoint, Qt, QRect, QRectF
 from qtpy.QtGui import QColor, QPen
 from microscope.widgets.rubberband import ResizableRubberBand
 from microscope.widgets.color_button import ColorButton
 from microscope.plugins.base_plugin import BasePlugin
-from microscope.microscope import Microscope
-
 from qtpy.QtGui import QMouseEvent
 from collections import defaultdict
+if TYPE_CHECKING:
+    from microscope.microscope import Microscope
 
 
 class GridPlugin(BasePlugin):
