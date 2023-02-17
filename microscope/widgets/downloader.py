@@ -1,6 +1,6 @@
 import time
-from qtpy.QtCore import Signal, QByteArray, QObject, QUrl, QThread
-from qtpy.QtGui import  QImage
+from qtpy.QtCore import Signal, QByteArray, QObject, QUrl, QThread, Qt, QRect, QRectF
+from qtpy.QtGui import  QImage, QPainter, QBrush, QPen
 from qtpy.QtNetwork import QNetworkReply, QNetworkRequest, QNetworkAccessManager
 from typing import List, Any, Dict, Optional, NamedTuple
 from cv2 import VideoCapture
@@ -60,11 +60,16 @@ class VideoThread(QThread):
     def camera_refresh(self):
         """ Only request a new image if this is the first/last completed. """
         if not self.isMjpegFeed:
-            file = BytesIO(urllib.request.urlopen(self.url, timeout=1000/self.fps).read())
-            img = Image.open(file)
-            qimage = ImageQt.ImageQt(img)
-            self.showing_error = False
-            self.imageReady.emit(qimage)
+            try:
+                file = BytesIO(urllib.request.urlopen(self.url, timeout=1000/self.fps).read())
+                img = Image.open(file)
+                qimage = ImageQt.ImageQt(img)
+                self.showing_error = False
+                self.imageReady.emit(qimage)
+            except urllib.error.URLError:
+                print('Error in URL')
+                qimage = self.draw_message(f'Could not get data from: {self.url}')
+                self.imageReady.emit(qimage)
 
         elif self.isMjpegFeed and self.mjpegCamera:
             retVal, currentFrame = self.mjpegCamera.read()
@@ -89,6 +94,13 @@ class VideoThread(QThread):
         self.reply: Optional[QNetworkReply] = None
         self.isMjpegFeed = False
         self.acquire = True
+
+        self.error_qimage = QImage(100, 100, QImage.Format_RGB32)
+        self.painter = QPainter(self.error_qimage)
+        self.painter.setBrush(QBrush(Qt.green))
+        self.painter.fillRect(QRectF(0,0,400,300),Qt.green)
+        self.painter.fillRect(QRectF(100,100,200,100),Qt.white)
+        self.painter.setPen(QPen(Qt.black))
 
     def setUrl(self, url: str) -> None:
         self.url = url
@@ -117,3 +129,7 @@ class VideoThread(QThread):
 
     def stop(self):
         self.acquire = False
+
+    def draw_message(self, message: str) -> QImage:
+        self.painter.drawText(QRectF(100,100,200,100), message)
+        return self.error_qimage

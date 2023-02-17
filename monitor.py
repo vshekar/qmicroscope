@@ -24,7 +24,7 @@ from qtpy.QtWidgets import (
 from microscope.microscope import Microscope
 from microscope.container import Container
 from microscope.settings import Settings
-from microscope.plugins import (ZoomPlugin, GridPlugin, PresetPlugin, 
+from microscope.plugins import (ZoomPlugin, GridPlugin, PresetPlugin, ScalePlugin,
                                 TogglePlugin, CrossHairPlugin, RecordPlugin)
 
 
@@ -38,7 +38,7 @@ class Form(QMainWindow):
         self.container.size = [2, 2]
         self.microscope = self.container.microscope(0)
         #self.microscope = Microscope(self)
-        plugins = [ZoomPlugin, GridPlugin, CrossHairPlugin, PresetPlugin, RecordPlugin]
+        plugins = [ZoomPlugin, GridPlugin, CrossHairPlugin, PresetPlugin, ScalePlugin]
         self.main_microscope = Microscope(self, viewport=False, plugins=plugins)
         self.main_microscope.scale = [0, 500]
         self.main_microscope.fps = 30
