@@ -1,190 +1,180 @@
-import time
-import random
-
-from qtpy.QtCore import Signal, QByteArray, QPoint, QRect, QSize, QTimer, Qt, QObject, QUrl
-from qtpy.QtGui import QBrush, QColor, QFont, QImage, QPainter
-from qtpy.QtWidgets import QWidget
-
-from qtpy.QtNetwork import QNetworkRequest, QNetworkAccessManager
-
-class Downloader(QObject):
-    imageReady = Signal(QByteArray)
-
-    def __init__(self, parent=None):
-        super(Downloader, self).__init__(parent)
-        self.manager = QNetworkAccessManager()
-        self.url = 'http://localhost:9998/jpg/image.jpg'
-        self.request = QNetworkRequest()
-        self.request.setUrl(QUrl(self.url))
-        self.buffer = QByteArray()
-        self.reply = None
-
-    def setUrl(self, url):
-        self.url = url
-        self.request.setUrl(QUrl(self.url))
-
-    def downloadData(self):
-        """ Only request a new image if this is the first/last completed. """
-        if self.reply is None:
-            self.reply = self.manager.get(self.request)
-            self.reply.finished.connect(self.finished)
-
-    def finished(self):
-        """ Read the buffer, emit a signal with the new image in it. """
-        self.buffer = self.reply.readAll()
-        self.imageReady.emit(self.buffer)
-        self.reply.deleteLater()
-        self.reply = None
-
+from collections.abc import Iterable
+from qtpy.QtCore import Signal, QByteArray, QPoint, QSize, QSettings, QEvent
+from qtpy.QtGui import (QImage, QPainter, 
+                        QContextMenuEvent, QMouseEvent, QPixmap)
+from qtpy.QtWidgets import (QWidget, QMenu, QAction, QGraphicsView,
+                            QGraphicsScene, QGraphicsPixmapItem, QVBoxLayout)
+from typing import List, Any, Dict, Optional
+from .widgets.downloader import VideoThread
+from .plugins.base_plugin import BasePlugin
+from .plugin_settings import PluginSettingsDialog
 
 class Microscope(QWidget):
-    roiClicked = Signal(int, int)
-
-    def __init__(self, parent=None):
+    roiClicked: Signal = Signal(int, int)
+    clicked_url: Signal = Signal(str)
+    
+    def __init__(self, parent:Optional[QWidget]=None, 
+                 viewport:bool=True, plugins: List[BasePlugin]=list()) -> None:
         super(Microscope, self).__init__(parent)
-
+        self.plugin_classes = plugins
+        self.viewport = viewport
         self.setMinimumWidth(300)
         self.setMinimumHeight(300)
         self.image = QImage('image.jpg')
-        self.clicks = []
-        self.center = QPoint(
-            self.image.size().width() / 2, self.image.size().height() / 2
-        )
-        self.drawBoxes = False
-        self.start = QPoint(0, 0)
-        self.end = QPoint(1, 1)
-        self.yDivs = 5
-        self.xDivs = 5
-        self.color = False
-        self.fps = 5
-        self.scaleBar = False
-        self.crop = []
-        self.scale = []
+        self.pixmap = QGraphicsPixmapItem(None)
+        self.scene = QGraphicsScene(self)
+        self.view = QGraphicsView(self.scene)
+        self.view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        self.scene.addItem(self.pixmap)
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.view)
+        self.setLayout(self.layout)
 
-        self.url = 'http://localhost:9998/jpg/image.jpg'
+        self.yDivs: int = 5
+        self.xDivs: int = 5
+        self.color: bool = False
+        self.fps: int = 5
+        self.scale: List[int] = []
+        
+        self.url: str = 'http://localhost:8080/output.jpg'
 
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.updateImage)
+        #self.downloader = Downloader(self)
+        #self.downloader.imageReady.connect(self.updateImageData)
+        self.videoThread = VideoThread(fps=self.fps, url=self.url, parent=self)
+        self.videoThread.imageReady.connect(self.updateImageData)
 
-        self.downloader = Downloader(self)
-        self.downloader.imageReady.connect(self.updateImageData)
+        #self.timer = QTimer(self)
+        #self.timer.timeout.connect(self.downloader.downloadData)
 
-    def updatedImageSize(self):
+        self.plugins: List[BasePlugin] = []
+        for plugin_cls in self.plugin_classes:
+            self.plugins.append(plugin_cls(self))
+
+        self.view.viewport().installEventFilter(self)
+
+
+    def updatedImageSize(self) -> None:
         if self.image.size() != self.minimumSize():
             self.setMinimumSize(self.image.size())
             self.center = QPoint(
-                self.image.size().width() / 2, self.image.size().height() / 2
+                int(self.image.size().width() / 2), 
+                int(self.image.size().height() / 2)
             )
 
-    def acquire(self, start=True):
-        self.downloader.setUrl(self.url)
+    def acquire(self, start: bool=True) -> None:
+        #self.downloader.setUrl(self.url)
+        #print(self.url)
         if start:
-            self.timer.start(1000.0 / self.fps)
+            self.videoThread.setUrl(self.url)
+            self.videoThread.setFPS(self.fps)
+            self.videoThread.start()
+        elif self.videoThread.isRunning() and not start:
+            self.videoThread.stop()
+            self.videoThread.wait(500)
+        
+    def eventFilter(self, obj, event):
+        if obj is self.view.viewport():
+            if event.type() == QEvent.MouseButtonPress:
+                self.mouse_press_event(event)
+            if event.type() == QEvent.MouseButtonRelease:
+                self.mouse_release_event(event)
+            if event.type() == QEvent.MouseMove:
+                self.mouse_move_event(event)
+            if event.type() == QEvent.Wheel:
+                self.mouse_wheel_event(event)
+        return QWidget.eventFilter(self, obj, event)
+
+    def mouse_wheel_event(self, event):
+        # Zoom Factor
+        zoomInFactor = 1.05
+        zoomOutFactor = 1 / zoomInFactor
+
+        # Set Anchors
+        self.view.setTransformationAnchor(QGraphicsView.NoAnchor)
+        self.view.setResizeAnchor(QGraphicsView.NoAnchor)
+
+        # Save the scene pos
+        oldPos = self.view.mapToScene(event.pos())
+
+        # Zoom
+        if event.angleDelta().y() > 0:
+            zoomFactor = zoomInFactor
         else:
-            self.timer.stop()
+            zoomFactor = zoomOutFactor
+        self.view.scale(zoomFactor, zoomFactor)
 
-    def paintBoxes(self, painter):
-        rect = QRect(
-            self.start.x(),
-            self.start.y(),
-            self.end.x() - self.start.x(),
-            self.end.y() - self.start.y(),
-        )
-        painter.setPen(QColor.fromRgb(0, 255, 0))
-        painter.drawRect(rect)
-        # Now draw the lines for the boxes in the rectangle.
-        x1 = self.start.x()
-        y1 = self.start.y()
-        x2 = self.end.x()
-        y2 = self.end.y()
-        inc_x = (x2 - x1) / self.xDivs
-        inc_y = (y2 - y1) / self.yDivs
-        lines = time.perf_counter()
-        for i in range(1, self.xDivs):
-            painter.drawLine(x1 + i * inc_x, y1, x1 + i * inc_x, y2)
-        for i in range(1, self.yDivs):
-            painter.drawLine(x1, y1 + i * inc_y, x2, y1 + i * inc_y)
-        mid = time.perf_counter()
+        # Get the new position
+        newPos = self.view.mapToScene(event.pos())
 
-        # Now draw the color overlay thing if requested
-        rects = time.perf_counter()
-        if self.color:
-            brushColor = QColor(0, 255, 0, 20)
-            brush = QBrush(brushColor)
-            painter.setBrush(brush)
-            painter.setPen(QColor.fromRgb(0, 255, 0))
-            for i in range(0, self.xDivs):
-                for j in range(0, self.yDivs):
-                    alpha = i / self.yDivs * 255
-                    if True:# j % 2 == 0:
-                        brushColor.setAlpha(alpha / 2)
-                        brushColor.setGreen(255)
-                    else:
-                        brushColor.setAlpha(255 / 2)
-                        brushColor.setGreen(alpha)
+        # Move scene to old position
+        delta = newPos - oldPos
+        self.view.translate(delta.x(), delta.y())
 
-                    brush.setColor(brushColor)
-                    painter.setBrush(brush)
-                    rect = QRect(x1 + i * inc_x, y1 + j * inc_y, inc_x, inc_y)
-                    painter.drawRect(rect)
-        rects2 = time.perf_counter()
+    def mouse_press_event(self, a0: QMouseEvent):
+        
+        if self.viewport:
+            self.clicked_url.emit(self.settings_group)
+        
+        for plugin in self.plugins:
+            plugin.mouse_press_event(a0)
 
+    def mouse_move_event(self, a0: QMouseEvent):
+        for plugin in self.plugins:
+            plugin.mouse_move_event(a0)
+        
+    def mouse_release_event(self, a0: QMouseEvent) -> None:
+        for plugin in self.plugins:
+            plugin.mouse_release_event(a0) 
+    
+    def contextMenuEvent(self, a0: QContextMenuEvent) -> None:
+        """Add entries into the context menu based on plugins used
+        """
+        super().contextMenuEvent(a0)
+        self.menu = QMenu(self)
+        config_plugins_action = QAction('Configure Plugins', self)
+        config_plugins_action.triggered.connect(self._config_plugins)
+        self.addMenuItem(config_plugins_action)
+        
+        for plugin in self.plugins:
+            self.menu.addSection(plugin.name)
+            context_menu_entry = plugin.context_menu_entry()
+            
+            if isinstance(context_menu_entry, Iterable):
+                for item in context_menu_entry:
+                    self.addMenuItem(item)
+            else:
+                self.addMenuItem(context_menu_entry)
+        
+        
+        self.menu.move(a0.globalPos())
+        self.menu.show()
+    
+    def addMenuItem(self, item):
+        if isinstance(item, QAction):
+            self.menu.addAction(item)
+        elif isinstance(item, QMenu):
+            self.menu.addMenu(item)
 
-    def paintEvent(self, event):
-        tic = time.perf_counter()
-        painter = QPainter(self)
-        rect = event.rect()
-        painter.drawImage(rect, self.image, rect)
-        painter.setPen(QColor.fromRgb(255, 0, 0))
-        #painter.drawPoints(self.clicks)
-        if self.drawBoxes:
-            self.drawBoxes(painter)
-        # Draw the center mark
-        painter.setPen(QColor.fromRgb(255, 0, 0))
-        painter.drawLine(
-            self.center.x() - 20, self.center.y(), self.center.x() + 20, self.center.y()
-        )
-        painter.drawLine(
-            self.center.x(), self.center.y() - 20, self.center.x(), self.center.y() + 20
-        )
+    def _config_plugins(self):
+        plugin_settings_dialog = PluginSettingsDialog(parent=self, plugins=self.plugins)
+        
 
-        # Draw the scale bar
-        if self.scaleBar:
-            painter.setPen(QColor.fromRgb(40, 40, 40))
-            painter.setFont(QFont("Arial", 30))
-            scaleRect = QRect(10, 420, 200, 30)
-            painter.drawText(scaleRect, Qt.AlignCenter, "10 nm")
-            pen = painter.pen()
-            pen.setWidth(5)
-            painter.setPen(pen)
-            painter.drawLine(10, 460, 210, 460)
-
-        toc = time.perf_counter()
-
-    def mousePressEvent(self, event):
-        pos = event.pos()
-        self.roiClicked.emit(pos.x(), pos.y())
-        self.clicks.append(pos)
-        self.start = pos
-        self.end = pos
-        self.update()
-
-    def mouseMoveEvent(self, event):
-        self.end = event.pos()
-        self.update()
-
-    def sizeHint(self):
+    def sizeHint(self) -> QSize:
         return QSize(400, 400)
+        
 
-    def updateImage(self):
-        """ Request an updated image asynchronously. """
-        self.downloader.downloadData()
-
-    def updateImageData(self, image):
+    def updateImageData(self, image: QImage):
         """ Triggered when the new image is ready, update the view. """
-        self.image.loadFromData(image, 'JPG')
-        if len(self.crop) == 4:
-            self.image = self.image.copy(self.crop[0], self.crop[1], self.crop[2], self.crop[3])
+        if isinstance(image, QByteArray):
+            self.image.loadFromData(image, 'JPG')
+        else:
+            self.image = image
+        
+        #Loop through plugins to process video image
+        for plugin in self.plugins:
+            if plugin.updates_image:
+                self.image = plugin.update_image_data(self.image)
+
         if len(self.scale) == 2:
             if self.scale[0] > 0:
                 self.image = self.image.scaledToWidth(self.scale[0])
@@ -192,18 +182,28 @@ class Microscope(QWidget):
                 self.image = self.image.scaledToHeight(self.scale[1])
 
         self.updatedImageSize()
+        #self.view.setFixedSize(self.image.size())
+        pixmap = QPixmap.fromImage(self.image)
+        self.pixmap.setPixmap(pixmap)
+        self.scene.setSceneRect(self.pixmap.boundingRect())
+        rect = self.image.rect()
+        ht = self.image.rect().height()
+        wd = self.image.rect().width()
+        rect.setHeight(ht + 2)
+        rect.setWidth(wd + 2)
+        self.view.setGeometry(rect)
         self.update()
 
+        
+
     def resizeImage(self):
-        if len(self.crop) == 4:
-            self.image = self.image.copy(self.crop[0], self.crop[1], self.crop[2], self.crop[3])
         if len(self.scale) == 2:
             if self.scale[0] > 0:
                 self.image = self.image.scaledToWidth(self.scale[0])
             elif self.scale[1] > 0:
                 self.image = self.image.scaledToHeight(self.scale[1])
 
-    def readFromDict(self, settings):
+    def readFromDict(self, settings: Dict[Any, Any]):
         """ Read the settings from a Python dict. """
         if settings.has_key('url'):
             self.url = settings['url']
@@ -216,12 +216,12 @@ class Microscope(QWidget):
         if settings.has_key('color'):
             self.color = settings['color']
         if settings.has_key('scaleW'):
-            self.scale = [ settings['scaleW'], 0 ]
+            self.scale = [ settings['scaleW'], 200 ]
         if settings.has_key('scaleH'):
             if len(self.scale) == 2:
-                self.scale[1] = settings['scaleW']
+                self.scale[1] = 200 #settings['scaleW']
             else:
-                self.scale = [ 0, settings['scaleW'] ]
+                self.scale = [ 200, settings['scaleW'] ]
 
 
     def writeToDict(self):
@@ -238,28 +238,54 @@ class Microscope(QWidget):
             settings['scaleH'] = self.scale[1]
         return settings
 
-    def readSettings(self, settings):
+    def readSettings(self, settings: QSettings):
         """ Read the settings for this microscope instance. """
+        self.settings_group = settings.group() # Keep a copy
+        self.settings = settings
         self.url = settings.value('url', 'http://localhost:9998/jpg/image.jpg')
-        print(f'url: {self.url}')
         self.fps = settings.value('fps', 5, type=int)
         self.xDivs = settings.value('xDivs', 5, type=int)
         self.yDivs = settings.value('yDivs', 5, type=int)
         self.color = settings.value('color', False, type=bool)
-        if settings.value('scaleW', -1, type=int) >= 0:
-            self.scale = [ settings.value('scaleW', 0, type=int),
-                           settings.value('scaleH', 0, type=int) ]
+
+        for plugin in self.plugins:
+            settings.beginGroup(plugin.name)
+            settings_values = {}
+            for key in settings.allKeys():
+                settings_values[key] = settings.value(key)
+            plugin.read_settings(settings_values)
+            settings.endGroup()
+
+        if settings.value('scaleW', -1, type=int) >= 0 and self.viewport:
+            self.scale = [ settings.value('scaleW', 200, type=int),
+                           settings.value('scaleH', 200, type=int) ]
+            print(f"Reading {self.settings_group} {self.scale}")
             self.resizeImage()
+        
 
-
-
-    def writeSettings(self, settings):
+    def writeSettings(self, settings: Optional[QSettings] = None, settings_group: Optional[str] = None):
         """ Write the settings for this microscope instance. """
+        if not settings:
+            settings = self.settings
+
+        if not settings_group:
+            settings_group = self.settings_group
+        
+        settings.beginGroup(settings_group)
         settings.setValue('url', self.url)
         settings.setValue('fps', self.fps)
         settings.setValue('xDivs', self.xDivs)
         settings.setValue('yDivs', self.yDivs)
         settings.setValue('color', self.color)
         if len(self.scale) == 2:
+            print(f"Writing {self.settings_group} {self.scale}")
             settings.setValue('scaleW', self.scale[0])
             settings.setValue('scaleH', self.scale[1])
+
+        for plugin in self.plugins:
+            settings.beginGroup(plugin.name)
+            settings_values = plugin.write_settings()
+            for key, value in settings_values.items():
+                settings.setValue(key, value)
+            settings.endGroup()
+        settings.endGroup()
