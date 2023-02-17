@@ -41,6 +41,8 @@ class ColorButton(QtWidgets.QPushButton):
         Qt will use the native dialog by default.
 
         '''
+        if not self._color:
+            self._color = QtGui.QColor('green')
         self._color = QtWidgets.QColorDialog.getColor(initial=self._color)
         self.setColor(self._color)
 

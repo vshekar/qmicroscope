@@ -259,6 +259,7 @@ class Microscope(QWidget):
         if settings.value('scaleW', -1, type=int) >= 0 and self.viewport:
             self.scale = [ settings.value('scaleW', 200, type=int),
                            settings.value('scaleH', 200, type=int) ]
+            print(f"Reading {self.settings_group} {self.scale}")
             self.resizeImage()
         
 
@@ -277,6 +278,7 @@ class Microscope(QWidget):
         settings.setValue('yDivs', self.yDivs)
         settings.setValue('color', self.color)
         if len(self.scale) == 2:
+            print(f"Writing {self.settings_group} {self.scale}")
             settings.setValue('scaleW', self.scale[0])
             settings.setValue('scaleH', self.scale[1])
 
