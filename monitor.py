@@ -112,6 +112,8 @@ class Form(QMainWindow):
     def closeEvent(self, event):
         settings = QSettings('NSLS2','monitor')
         self.writeSettings(settings)
+        self.main_microscope.acquire(False)
+        self.container.start(False)
         event.accept()
 
     def startButtonPressed(self):

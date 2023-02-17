@@ -70,6 +70,7 @@ class Microscope(QWidget):
             self.videoThread.start()
         elif self.videoThread.isRunning() and not start:
             self.videoThread.stop()
+            self.videoThread.wait(500)
         
     def eventFilter(self, obj, event):
         if obj is self.view.viewport():
